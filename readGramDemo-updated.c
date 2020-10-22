@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
-
+#define num_rules 67
 
 typedef struct symbol{
     union
@@ -27,15 +27,59 @@ typedef struct tokenStream{
 	char lexeme[30];
 	int line_num;
 	struct tokenStream* next;
+	struct tokenStream* before;
 } tokenStream;
 
-typedef struct ntree {
-    char *word;
-    
-    struct node *child;   // point to children of this node
-    struct node *next;    // point to next node at same level
-} ntree;
+////////////////////////////////////////////////////////////////////
 
+typedef struct parseTree {
+    symbol* sym;
+    struct parseTree *child;   // point to children of this node
+    struct parseTree *sibling;    // point to next node at same level
+	//union
+} parseTree;
+
+typedef struct Stack { 
+    int top; 
+    unsigned capacity; 
+    symbol* array; 
+}Stack; 
+  
+Stack* createStack(unsigned capacity) 
+{ 
+    Stack* stack = (struct Stack*)malloc(sizeof(Stack)); 
+    stack->capacity = capacity; 
+    stack->top = -1; 
+    stack->array = (symbol*)malloc(stack->capacity * sizeof(symbol)); 
+    return stack; 
+} 
+
+int isFull(Stack* stack) 
+{ 
+    return stack->top == stack->capacity - 1; 
+} 
+  
+int isEmpty(Stack* stack) 
+{ 
+    return stack->top == -1; 
+}
+
+void push(Stack* stack,symbol item) 
+{ 
+    if (isFull(stack)) 
+        return; 
+    stack->array[++stack->top] = item;  
+}
+
+ 
+symbol pop(Stack* stack) 
+{ 
+    if (isEmpty(stack)) 
+        return INT_MIN; 
+    return stack->array[stack->top--]; 
+}
+
+////////////////////////////////////////////////////////////
 
 void readGrammar(char* fname, llnode* grammar){
 
@@ -112,8 +156,7 @@ char* identifyToken(char* c){
 	char * s = (char*)malloc(sizeof(char)*30);
 	if(s == NULL) printf("malloc unsuccessful\n");
 	if(strcmp(c,"program") == 0) return s = "program";
-	else if(strcmp(c,"(") == 0) return s = "open_p";
-	else if(strcmp(c,")") == 0) return s = "close_p";
+	else if(strcmp(c,"()") == 0) return s = "brackets";
 	else if(strcmp(c,"{") == 0) return s = "open_curl";
 	else if(strcmp(c,"}") == 0) return s = "close_curl";
 	else if(strcmp(c,"declare") == 0) return s = "declare";
@@ -163,6 +206,7 @@ tokenStream* tokeniseSourcecode(char* fname, tokenStream *head){
 			strcpy(temp->lexeme,sym_read);
 			strcpy(temp->token_name, identifyToken(sym_read));
 			temp->next = NULL;
+			temp->before = s;
 			s->next = temp;
 			s = temp;
 			sym_read = strtok(NULL, " \n");
@@ -170,9 +214,120 @@ tokenStream* tokeniseSourcecode(char* fname, tokenStream *head){
 		line_num++; 
 	} 
 	fclose(fptr);
-	return head->next;
+	head = head->next;
+	head->before = NULL;
+	return head;
+}
+//////////////////////////////////////////////////////////////////
+
+void fill_aux(Stack* aux, symbol sym, int counter, llnode* G){
+	for(int i=0; i< num_rules; i++){ //define it
+		if(G[i].sym == sym){
+			if(counter==0){
+				llnode* temp = G + i;
+				temp = temp->next;
+				while(temp != NULL){
+					push(aux, *temp);
+				}
+				return;
+			}
+			else counter --;
+		} 
+	} 
 }
 
+void copy_stack(Stack* aux, Stack* stack){
+	while(!isEmpty(aux)){
+		push(stack, *pop(aux));
+	}
+}
+
+parseTree* createSubTree(symbol* sym, tokenStream *head, llnode* G){
+	if(head == NULL) return NULL;
+
+	parseTree* t = (parseTree*)malloc(sizeof(parseTree));
+	t->sym = sym;
+	t->sibling = NULL;
+
+	Stack* stack = createStack(100);
+	Stack* aux = createStack(100);
+
+	fill_aux(aux,sym,counter,G);
+	symbol temp = stack->array[stack->top];
+	copy_stack(aux,stack);
+
+	parseTree* temp;
+	while(!isEmpty(stack))
+	{
+		if(stack->array[stack->top]->is_terminal)
+		{
+			if(strcmp(stack->array[stack->top]->t,head->token_name) == 0){
+				head = head->next;
+				if(t->child == NULL){
+					temp = (parseTree*)malloc(sizeof(parseTree));
+					t->child = temp;
+				}
+				else{
+					temp->sibling = (parseTree*)malloc(sizeof(parseTree));
+					temp = temp->sibling;
+				}
+				temp->sym = stack->array[stack->top];
+				temp->sibling = NULL;
+				temp->child = NULL;
+				pop(stack);
+			}
+		}
+		else{
+			//calls createsubtree, but verifies before attaching.
+			//also backtrack code 
+			if(t->child == NULL){
+
+				t->child = createSubTree(stack->array[stack->top], head, G);
+			}
+			else{
+				temp->sibling = createSubTree(stack->array[stack->top], head, G);
+			}
+		}
+	}
+	return t;
+}
+
+void createParseTree(parseTree* t, tokenStream *head, llnode* G)
+{
+	// t = (parseTree*)malloc(sizeof(parseTree));
+	// t->sym = G[0].sym;
+	// t->sibling = NULL;
+	t = createSubTree(G[0].sym , head, G);
+
+
+
+	// for(int i=0;i<numRules;i++)
+	// {
+	// 	if(strcmp(G[i].sym.nt,"MAINPROG") == 0)
+	// 	{
+	// 		temp = G+i;
+	// 		break;
+	// 	}
+	// }
+	push(stack,temp->sym);
+	while(head != NULL)
+	{
+		if(stack->array[stack->top]->is_terminal)
+		{
+			if(strcmp(stack->array[stack->top]->t,head->token_name) == 0){
+				pop(stack);
+				head = head->next;
+			}
+		}
+		else
+		{	int counter = 0;
+			fill_aux(aux,stack->top,counter);
+			symbol temp = stack->array[stack->top];
+			copy_stack(aux,stack);
+		}
+		
+	}
+}
 
 int main(){
 	/*
@@ -191,9 +346,13 @@ int main(){
 	tokenStream* head;
 	head = tokeniseSourcecode("sourcecode.txt", head);
 
-	while(head != NULL){
+	while(head->next != NULL){
 		printf("%s\n", head->token_name);
 		head = head->next;
+	}
+	while(head != NULL){
+		printf("%s\n", head->token_name);
+		head = head->before;
 	}
 	return 0;
 }
