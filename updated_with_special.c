@@ -266,7 +266,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 	//symbol temp = stack->array[stack->top];
 	printf("5\n");
 	parseTree* temp;
-	
+	int nextcounter = 0;
 	while(!isEmpty(stack))
 	{	
 		printf("6\n");
@@ -298,9 +298,9 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 			//also backtrack code 
 			if(t->child == NULL){
 				do{
-					st = createSubTree(&(stack->array[stack->top]), head, G, counter);
+					st = createSubTree(&(stack->array[stack->top]), head, G, nextcounter);
 					t->child = st.pt;
-					counter++;
+					nextcounter++;
 				} while(t->child == NULL);
 				//printf("out of while\n");
 				//if(endhead == NULL || *endhead == NULL) printf("null\n");
@@ -311,9 +311,9 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 			}
 			else{
 				do{
-					st = createSubTree(&(stack->array[stack->top]), head, G, counter);
+					st = createSubTree(&(stack->array[stack->top]), head, G, nextcounter);
 					temp->sibling = st.pt;
-					counter++;
+					nextcounter++;
 				} while(temp->sibling == NULL);
 				head = st.endhead;
 				temp = temp->sibling;
