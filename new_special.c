@@ -283,6 +283,9 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 					printf("EPSILON found\n");
 					temp = (parseTree*)malloc(sizeof(parseTree));
 					t->child = temp;
+					temp->sym = &(stack->array[stack->top]);
+					temp->sibling = NULL;
+					temp->child = NULL;
 					pop(stack);
 		}
 		else if(stack->array[stack->top].is_terminal)
@@ -373,6 +376,18 @@ parseTree* createParseTree(parseTree* t, tokenStream *head, llnode* G)
 	return t = st.pt;
 }
 
+void printParseTree(parseTree* tree){
+	if(tree == NULL) return;
+	if(!tree->sym->is_terminal){
+		printf("%s ", tree->sym->nt);
+		printParseTree(tree->child);
+	}
+	else{
+		printf("%s ", tree->sym->t);
+	}
+	printParseTree(tree->sibling);
+}
+
 int main(){
 	// bool val; // default false;
 	// printf("%s", val ? "true" : "false");
@@ -406,8 +421,10 @@ int main(){
 	
 	parseTree* tree;
 	tree = createParseTree(tree,head,G);
-	/*
-	printf("%s", tree->child->sibling->sibling->sibling->child->child->child->sym->nt);
-	*/
+	printf("\n\n");
+	printParseTree(tree);
+	
+	//printf("%s", tree->child->sibling->sibling->sibling->child->child->child->sym->nt);
+	
 	return 0;
 }
