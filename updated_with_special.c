@@ -252,28 +252,29 @@ void copy_stack(Stack* aux, Stack* stack){
 }
 
 special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter){
-	special st;
-	st.pt = NULL;
-	if(head == NULL) return st;
+	special st, ret_st;
+	ret_st.pt = NULL;
+	if(head == NULL) return ret_st;
 	parseTree* t = (parseTree*)malloc(sizeof(parseTree));
 	t->sym = lhs_sym;
 	t->sibling = NULL;
 	Stack* stack = createStack(100);
 	Stack* aux = createStack(100);
 	fill_aux(aux,*lhs_sym, G, counter);
-	printf("4\n");
 	copy_stack(aux,stack);
 	//symbol temp = stack->array[stack->top];
-	printf("5\n");
+	//printf("Start of subtree %s\n", lhs_sym->nt);
 	parseTree* temp;
-	int nextcounter = 0;
 	while(!isEmpty(stack))
 	{	
-		printf("6\n");
-		if(head == NULL) return st;
+		int nextcounter = 0;
+		
+		if(head == NULL) break;
 
 		if(stack->array[stack->top].is_terminal)
 		{
+			//printf("Entered While of subtree %s and stack top is T %s\n", lhs_sym->nt, stack->array[stack->top].t);
+
 			if(strcmp(stack->array[stack->top].t,head->token_name) == 0){
 				head = head->next;
 				if(t->child == NULL){
@@ -290,10 +291,11 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 				pop(stack);
 			}
 			else{
-				return st; // if NULL is returned, something is wrong
+				return ret_st; // if NULL is returned, something is wrong
 			}
 		}
 		else{
+			//printf("Entered while of subtree %s and stack top is NT %s\n", lhs_sym->nt, stack->array[stack->top].nt);
 			//calls createsubtree, but verifies before attaching.
 			//also backtrack code 
 			if(t->child == NULL){
@@ -302,12 +304,11 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 					t->child = st.pt;
 					nextcounter++;
 				} while(t->child == NULL);
-				//printf("out of while\n");
-				//if(endhead == NULL || *endhead == NULL) printf("null\n");
-				printf("%s\n", head->lexeme);
+				//printf("Back into while of subtree %s and stack top is NT %s\n", lhs_sym->nt, stack->array[stack->top].nt);
+				//printf("Head before %s\n", head->lexeme);
 				head = st.endhead;
-				printf("%s\n", head->lexeme);
-				//printf("caller %s\n", (*endhead)->lexeme);
+				//printf("Head after %s\n", head->lexeme);
+				temp = t->child;
 			}
 			else{
 				do{
@@ -315,36 +316,28 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 					temp->sibling = st.pt;
 					nextcounter++;
 				} while(temp->sibling == NULL);
+				//printf("Back into while of subtree %s and stack top is NT %s\n", lhs_sym->nt, stack->array[stack->top].nt);
+				//printf("Head before %s\n", head->lexeme);
 				head = st.endhead;
+				//printf("Head after %s\n", head->lexeme);
 				temp = temp->sibling;
-				temp->sibling = NULL;
-				temp->child = NULL;
 			}
+			pop(stack);
 		}
 	}
-	st.pt = t;
-	st.endhead = head;
+	ret_st.pt = t;
+	ret_st.endhead = head;
 	//printf("%s\n",head->lexeme);
 	//printf("callee %s\n", (*endhead)->lexeme);
-	return st;
+	return ret_st;
 }
 
-void createParseTree(parseTree* t, tokenStream *head, llnode* G)
+parseTree* createParseTree(parseTree* t, tokenStream *head, llnode* G)
 {
-	// t = (parseTree*)malloc(sizeof(parseTree));
-	// t->sym = G[0].sym;
-	// t->sibling = NULL;
 	special st;
 	st = createSubTree(&(G[0].sym) , head, G, 0);
-	t = st.pt;
-	// for(int i=0;i<numRules;i++)
-	// {
-	// 	if(strcmp(G[i].sym.nt,"MAINPROG") == 0)
-	// 	{
-	// 		temp = G+i;
-	// 		break;
-	// 	}
-	// }
+	if(st.pt != NULL) printf("Parse Tree Created Successfully\n");
+	return t = st.pt;
 }
 
 int main(){
@@ -363,7 +356,7 @@ int main(){
 	}
 	*/
 	tokenStream* head;
-	head = tokeniseSourcecode("sourcecode.txt", head);
+	head = tokeniseSourcecode("sourcecode2.txt", head);
 	/*
 	while(head->next != NULL){
 		printf("%s\n", head->token_name);
@@ -376,7 +369,7 @@ int main(){
 	*/
 
 	parseTree* tree;
-	createParseTree(tree,head,G);
+	tree = createParseTree(tree,head,G);
 
 	printf("%s", tree->child->sibling->sibling->sibling->child->child->child->sym->nt);
 
