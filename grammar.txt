@@ -1,4 +1,4 @@
-MAINPROG program open_p close_p open_curl PROG close_curl
+MAINPROG program brackets open_curl PROG close_curl
 PROG DEC_STATEMENTS ASSIGNMENT_STATEMENTS
 
 DEC_STATEMENTS DEC_STATEMENT DEC_STATEMENTS
