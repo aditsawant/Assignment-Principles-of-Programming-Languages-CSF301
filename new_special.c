@@ -63,8 +63,8 @@ typedef struct rectArrayType {
 } rectArrayType;
 
 typedef union typeExp {
-    jaggedArrayType j;
-	rectArrayType ar;
+    jaggedArrayType ja;
+	rectArrayType ra;
     char prim_type[10];
 
 } typeExp;
@@ -299,6 +299,55 @@ void copy_stack(Stack* aux, Stack* stack){
 	}
 }
 
+
+typeExp* populateTex(symbol sym, parseTree* tree){
+	typeExp* tex = (typeExp*) malloc(sizeof(typeExp));
+	if(sym.is_terminal){
+		if(strcmp(sym.t, "integer") == 0){
+			strcpy(tex->prim_type, "integer");
+		}
+		else if(strcmp(sym.t, "real") == 0){
+			strcpy(tex->prim_type, "real");	
+		}
+		else if(strcmp(sym.t, "boolean") == 0){
+			strcpy(tex->prim_type, "boolean");
+		}
+		else {
+			tex = NULL;
+		}
+	}
+	else{
+		//sym is a non-terminal, then what?
+		if(strcmp(sym.nt, "REC_ARRAY") == 0){
+			parseTree* temp = tree;
+			int counter = 0;
+			rangePair* rtemp = (rangePair*) malloc(sizeof(rangePair));
+			rangePair* orig_rtemp = rtemp;
+			while(strcmp(temp->tok->lexeme, "of") != 0){
+				counter++;
+				if(strcmp(temp->tok->lexeme, "[") == 0){
+					rtemp->next = tex->tok->rangeListHead;
+					tex->tok->rangeListHead = (rangePair*) malloc(sizeof(rangePair));
+					strcpy(tex->ra->rangeListHead->lower, temp->sibling->child->tok->lexeme);
+				}
+				if(strcmp(temp->tok->lexeme, "..") == 0){
+					strcpy(tex->ra->rangeListHead->upper, temp->sibling->child->tok->lexeme);
+					tex->tok->rangeListHead->next = NULL;
+				}
+				rtemp = rtemp->next;
+				temp = temp->sibling;
+			}
+			tex->ra->dimensions = counter/5;
+		}
+		if(strcmp(sym.nt, "JAGGED_ARRAY") == 0){
+			tex->ja->dimensions = _____;
+			tex->ja->lower = _________;
+			tex->ja->upper = _________;
+			tex->ja->rowListHead = _________;
+		}
+	}
+}
+
 special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter){
 	special st, ret_st;
 	ret_st.pt = NULL;
@@ -338,6 +387,8 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 					temp->sym = &(stack->array[stack->top]);
 					temp->sibling = NULL;
 					temp->child = NULL;
+					temp->tok = NULL;
+					temp->tex = populateTex(stack->array[stack->top]);
 					pop(stack);
 		}
 		else if(stack->array[stack->top].is_terminal)
@@ -345,7 +396,6 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 //			printf("Entered While of subtree %s and stack top is T %s at line %d\n", lhs_sym->nt, stack->array[stack->top].t,head->line_num);
 
 			if(strcmp(stack->array[stack->top].t,head->token_name) == 0){
-				head = head->next;
 				if(t->child == NULL){
 					temp = (parseTree*)malloc(sizeof(parseTree));
 					t->child = temp;
@@ -357,6 +407,9 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 				temp->sym = &(stack->array[stack->top]);
 				temp->sibling = NULL;
 				temp->child = NULL;
+				temp->tok = head;
+				temp->tex = populateTex(stack->array[stack->top]);
+				head = head->next;
 				pop(stack);
 			}
 			else{
@@ -379,6 +432,8 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 				if(t->child != NULL){
 					head = st.endhead;
 					temp = t->child;
+					temp->tok = NULL;
+					temp->tex = populateTex(stack->array[stack->top]);
 				}
 				/*
 				else{
@@ -401,6 +456,8 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 //				printf("Head before %s\n", head->lexeme);
 				if(temp->sibling != NULL){
 					head = st.endhead;
+					temp->tok = NULL;
+					temp->tex = populateTex(stack->array[stack->top]);
 					temp = temp->sibling;
 				}
 				/*
@@ -441,61 +498,24 @@ void printParseTree(parseTree* tree){
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
+/
 
-void traverseParseTree(parseTree* tree, typeElement* table){
+void traverseParseTreeA(parseTree* tree, typeElement* table){
 	if(tree == NULL) return;
+	tree->tex = populateTex(tree->sym);
 	if(!tree->sym->is_terminal){
-		traverseParseTree(tree->child);
+		traverseParseTreeA(tree->child);
 	}
-	traverseParseTree(tree->sibling);
+	traverseParseTreeA(tree->sibling);
 	//self
 	// field 1 table->varname = 
-	table->dtype 
+	
 
 }
 
-typeExp makeType(char* rule) { //rule should be next of datatype
-    typeExp* newType = (typeExp*) malloc(sizeof(typeExp));
-    if(strcmp(rule[0], "PRIM_DATATYPE") == 0) {
-        newType->type = rule[1];
-    }
-    else {
-        //for ARRDATATYPE
-        newType->ar.basicElementType = "integer";
-        if(strcmp(rule[1], "JAGGED_ARRAY") == 0) {
-            // for jagged
-            //TODO: declare ruleNew -- make new function?
-            if(strcmp(ruleNew[1], "2DIM_JAGGED") == 0) {
-                newType->ar.dimensions = 2;
-                //TODO: code for rangepair
-            }
-        }
-        else {
-            //for rect
-
-        }
-    }
-} 
-
-void traverseParseTree(parseTree* p) {
-    //if non terminal then makeType
-    //if terminal then 
-    if(p->sym->is_terminal) {
-        if(p->sibling != NULL) traverseParseTree(p->sibling);
-        else return;
-    }
-    if(strcmp(p->sym->nt, "DATATYPE") == 0) {
-        //TODO: store rule nums in grammar symbol, take rule num, traverse list and generate rule string
-        //TODO: makeType on generated string 
-    }
-    if(p->child != NULL) {
-        traverseParseTree(p->child);
-    }
-}
 
 
-*/
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int main(){
