@@ -32,21 +32,40 @@ typedef struct tokenStream{
 //tokenStream** endhead;
 
 ////////////////////////////////////////////////////////////////////
-/*
+
 typedef struct rangePair {
     int lower;
     int upper;
+	struct rangePair* next;
 } rangePair;
 
-typedef struct arrayType {
+typedef struct innerSize {
+	int innerdim;
+	innerSize* next;
+} innerSize;
+
+typedef struct row {
+	int size;
+	innerSize* innerSizeHead;
+	struct row* next;
+} row;
+
+typedef struct jaggedArrayType {
+	enum {two = 2, three} dimensions;
+	int upper, lower;
+	row* rowListHead;
+} jaggedArrayType;
+
+typedef struct rectArrayType {
        // char* basicElementType; remember while printing
         int dimensions;
-        rangePair ranges[100];
-} arrayType;
+        rangePair* rangeListHead;
+} rectArrayType;
 
 typedef union typeExp {
-    arrayType ar;
-    char* type;
+    jaggedArrayType j;
+	rectArrayType ar;
+    char prim_type[10];
 
 } typeExp;
 
@@ -56,15 +75,16 @@ typedef struct typeElement{
 	enum { Static, Dynamic, not_applicable } nature;
 	typeExp tex;
 } typeElement;
-*/
+
 //////////////////////////////////////////////////////////////////////
 
 typedef struct parseTree {
     symbol* sym;
     struct parseTree *child;   // point to children of this node
     struct parseTree *sibling;    // point to next node at same level
+	tokenStream* tok;			// for line num and lexeme, add in create parse tree
 	//union
-	//typeExp tex;
+	typeExp tex;
 } parseTree;
 
 typedef struct Stack { 
@@ -322,7 +342,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 		}
 		else if(stack->array[stack->top].is_terminal)
 		{
-			printf("Entered While of subtree %s and stack top is T %s at line %d\n", lhs_sym->nt, stack->array[stack->top].t,head->line_num);
+//			printf("Entered While of subtree %s and stack top is T %s at line %d\n", lhs_sym->nt, stack->array[stack->top].t,head->line_num);
 
 			if(strcmp(stack->array[stack->top].t,head->token_name) == 0){
 				head = head->next;
@@ -344,7 +364,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 			}
 		}
 		else{
-			printf("Entered while of subtree %s and stack top is NT %s\n", lhs_sym->nt, stack->array[stack->top].nt);
+//			printf("Entered while of subtree %s and stack top is NT %s\n", lhs_sym->nt, stack->array[stack->top].nt);
 			//calls createsubtree, but verifies before attaching and also backtrack code 
 			if(t->child == NULL){
 				do{
@@ -354,8 +374,8 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 					nextcounter++;
 				} while(t->child == NULL);
 				
-				printf("Back into while of subtree %s and stack top is NT %s\n", lhs_sym->nt, stack->array[stack->top].nt);
-				printf("Head before %s\n", head->lexeme);
+//				printf("Back into while of subtree %s and stack top is NT %s\n", lhs_sym->nt, stack->array[stack->top].nt);
+//				printf("Head before %s\n", head->lexeme);
 				if(t->child != NULL){
 					head = st.endhead;
 					temp = t->child;
@@ -367,7 +387,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 					return ret_st;
 				}
 				*/
-				printf("Head after %s\n", head->lexeme);
+//				printf("Head after %s\n", head->lexeme);
 				
 			}
 			else{
@@ -377,8 +397,8 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 					temp->sibling = st.pt;
 					nextcounter++;
 				} while(temp->sibling == NULL);
-				printf("Back into while of subtree %s and stack top is NT %s\n", lhs_sym->nt, stack->array[stack->top].nt);
-				printf("Head before %s\n", head->lexeme);
+//				printf("Back into while of subtree %s and stack top is NT %s\n", lhs_sym->nt, stack->array[stack->top].nt);
+//				printf("Head before %s\n", head->lexeme);
 				if(temp->sibling != NULL){
 					head = st.endhead;
 					temp = temp->sibling;
@@ -389,7 +409,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 					return ret_st;
 				}
 				*/
-				printf("Head after %s\n", head->lexeme);
+//				printf("Head after %s\n", head->lexeme);
 				
 			}
 			pop(stack);
