@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <limits.h>
-#define num_rules 67
+#define num_rules 68
 
 typedef struct symbol{
     union
@@ -32,12 +32,39 @@ typedef struct tokenStream{
 //tokenStream** endhead;
 
 ////////////////////////////////////////////////////////////////////
+/*
+typedef struct rangePair {
+    int lower;
+    int upper;
+} rangePair;
+
+typedef struct arrayType {
+       // char* basicElementType; remember while printing
+        int dimensions;
+        rangePair ranges[100];
+} arrayType;
+
+typedef union typeExp {
+    arrayType ar;
+    char* type;
+
+} typeExp;
+
+typedef struct typeElement{
+	char* varname;
+	enum {Primitive, Rect_Array, Jagged_Array} dtype;
+	enum { Static, Dynamic, not_applicable } nature;
+	typeExp tex;
+} typeElement;
+*/
+//////////////////////////////////////////////////////////////////////
 
 typedef struct parseTree {
     symbol* sym;
     struct parseTree *child;   // point to children of this node
     struct parseTree *sibling;    // point to next node at same level
 	//union
+	//typeExp tex;
 } parseTree;
 
 typedef struct Stack { 
@@ -89,8 +116,6 @@ typedef struct special{
 
 ///////////////////////////////////////////////////////////////////
 void readGrammar(char* fname, llnode* grammar){
-	//grammar = 
-
 	FILE* fptr = fopen(fname, "r");
 	int rule_num = 0;
 	char buffer[200];
@@ -266,13 +291,20 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 
 	Stack* stack = createStack(100);
 	Stack* aux = createStack(100);
+
 	ret_st.verdict = fill_aux(aux,*lhs_sym, G, counter);
 	if(ret_st.verdict == true) return ret_st;
 	copy_stack(aux,stack);
 
 	printf("Start of subtree %s\n", lhs_sym->nt);
 	parseTree* temp;
-
+	/*
+	if(strcmp(lhs_sym->nt,"DIMS")==0 && strcmp(head->token_name,"of") == 0){
+		
+		ret_st.verdict = false;
+		return ret_st;
+	} 
+	*/
 	while(!isEmpty(stack))
 	{	
 		int nextcounter = 0;
@@ -290,7 +322,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 		}
 		else if(stack->array[stack->top].is_terminal)
 		{
-			printf("Entered While of subtree %s and stack top is T %s\n", lhs_sym->nt, stack->array[stack->top].t);
+			printf("Entered While of subtree %s and stack top is T %s at line %d\n", lhs_sym->nt, stack->array[stack->top].t,head->line_num);
 
 			if(strcmp(stack->array[stack->top].t,head->token_name) == 0){
 				head = head->next;
@@ -388,6 +420,64 @@ void printParseTree(parseTree* tree){
 	printParseTree(tree->sibling);
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+
+void traverseParseTree(parseTree* tree, typeElement* table){
+	if(tree == NULL) return;
+	if(!tree->sym->is_terminal){
+		traverseParseTree(tree->child);
+	}
+	traverseParseTree(tree->sibling);
+	//self
+	// field 1 table->varname = 
+	table->dtype 
+
+}
+
+typeExp makeType(char* rule) { //rule should be next of datatype
+    typeExp* newType = (typeExp*) malloc(sizeof(typeExp));
+    if(strcmp(rule[0], "PRIM_DATATYPE") == 0) {
+        newType->type = rule[1];
+    }
+    else {
+        //for ARRDATATYPE
+        newType->ar.basicElementType = "integer";
+        if(strcmp(rule[1], "JAGGED_ARRAY") == 0) {
+            // for jagged
+            //TODO: declare ruleNew -- make new function?
+            if(strcmp(ruleNew[1], "2DIM_JAGGED") == 0) {
+                newType->ar.dimensions = 2;
+                //TODO: code for rangepair
+            }
+        }
+        else {
+            //for rect
+
+        }
+    }
+} 
+
+void traverseParseTree(parseTree* p) {
+    //if non terminal then makeType
+    //if terminal then 
+    if(p->sym->is_terminal) {
+        if(p->sibling != NULL) traverseParseTree(p->sibling);
+        else return;
+    }
+    if(strcmp(p->sym->nt, "DATATYPE") == 0) {
+        //TODO: store rule nums in grammar symbol, take rule num, traverse list and generate rule string
+        //TODO: makeType on generated string 
+    }
+    if(p->child != NULL) {
+        traverseParseTree(p->child);
+    }
+}
+
+
+*/
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 int main(){
 	// bool val; // default false;
 	// printf("%s", val ? "true" : "false");
@@ -407,7 +497,7 @@ int main(){
 	}
 	*/
 	tokenStream* head;
-	head = tokeniseSourcecode("sourcecode2.txt", head);
+	head = tokeniseSourcecode("sourcecode3.txt", head);
 	/*
 	while(head->next != NULL){
 		printf("%s\n", head->token_name);
