@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <limits.h>
-#define num_rules 68
+#define num_rules 72
 
 typedef struct symbol{
     union
