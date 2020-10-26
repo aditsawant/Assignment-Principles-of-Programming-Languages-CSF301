@@ -34,14 +34,14 @@ typedef struct tokenStream{
 ////////////////////////////////////////////////////////////////////
 
 typedef struct rangePair {
-    int lower;
-    int upper;
+    char lower[20];
+    char upper[20];
 	struct rangePair* next;
 } rangePair;
 
 typedef struct innerSize {
 	int innerdim;
-	innerSize* next;
+	struct innerSize* next;
 } innerSize;
 
 typedef struct row {
@@ -84,7 +84,7 @@ typedef struct parseTree {
     struct parseTree *sibling;    // point to next node at same level
 	tokenStream* tok;			// for line num and lexeme, add in create parse tree
 	//union
-	typeExp tex;
+	typeExp* tex;
 } parseTree;
 
 typedef struct Stack { 
@@ -204,6 +204,27 @@ void readGrammar(char* fname, llnode* grammar){
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
+char *strstrip(char *s)
+{
+        size_t size;
+        char *end;
+
+        size = strlen(s);
+
+        if (!size)
+                return s;
+
+        end = s + size - 1;
+        while (end >= s && isspace(*end))
+                end--;
+        *(end + 1) = '\0';
+
+        while (*s && isspace(*s))
+                s++;
+
+        return s;
+}
+
 
 char* identifyToken(char* c){
 	char * s = (char*)malloc(sizeof(char)*30);
@@ -244,29 +265,39 @@ char* identifyToken(char* c){
 tokenStream* tokeniseSourcecode(char* fname, tokenStream *head){
 	FILE* fptr = fopen(fname, "r");
 	int line_num = 1;
-	char buffer[200];
+	char buffer[400];
 	head = (tokenStream*)malloc(sizeof(tokenStream));
 	tokenStream* s;
 	s = head;
 	while (fgets(buffer, sizeof(buffer), fptr) != NULL) {
-        
 		char *sym_read;
 		int i;
 		sym_read = strtok(buffer, " \n");
 		for (i = 0; sym_read != NULL; i++){
-			tokenStream* temp = (tokenStream*)malloc(sizeof(tokenStream));
-			temp->line_num = line_num;
-			strcpy(temp->lexeme,sym_read);
-			strcpy(temp->token_name, identifyToken(sym_read));
-			temp->next = NULL;
-			temp->before = s;
-			s->next = temp;
-			s = temp;
+			sym_read = strstrip(sym_read);
+			if(strcmp(sym_read,"") != 0){
+				tokenStream* temp = (tokenStream*)malloc(sizeof(tokenStream));
+				temp->line_num = line_num;
+				strcpy(temp->lexeme,sym_read);
+				strcpy(temp->token_name, identifyToken(sym_read));
+				temp->next = NULL;
+				temp->before = s;
+				s->next = temp;
+				s = temp;
+			}
 			sym_read = strtok(NULL, " \n");
 		}
 		line_num++; 
 	} 
 	fclose(fptr);
+
+	tokenStream* temp = (tokenStream*)malloc(sizeof(tokenStream));
+	strcpy(temp->lexeme,"EOF");
+	strcpy(temp->token_name, "EOF");
+	temp->next = NULL;
+	temp->before = s;
+	s->next = temp;
+
 	head = head->next;
 	head->before = NULL;
 	return head;
@@ -299,129 +330,6 @@ void copy_stack(Stack* aux, Stack* stack){
 	}
 }
 
-
-typeExp* populateTex(parseTree* tree){
-	symbol sym = *(tree->sym);
-	typeExp* tex = (typeExp*) malloc(sizeof(typeExp));
-	if(sym.is_terminal){
-		if(strcmp(sym.t, "integer") == 0){
-			strcpy(tex->prim_type, "integer");
-		}
-		else if(strcmp(sym.t, "real") == 0){
-			strcpy(tex->prim_type, "real");	
-		}
-		else if(strcmp(sym.t, "boolean") == 0){
-			strcpy(tex->prim_type, "boolean");
-		}
-		else {
-			tex = NULL;
-		}
-	}
-	else{
-		//sym is a non-terminal, then what?
-		if(strcmp(sym.nt, "REC_ARRAY") == 0){
-			parseTree* temp = tree;
-			int counter = 0;
-			rangePair* rtemp = (rangePair*) malloc(sizeof(rangePair));
-			rangePair* orig_rtemp = rtemp;
-			while(strcmp(temp->tok->lexeme, "of") != 0){
-				counter++;
-				if(strcmp(temp->tok->lexeme, "[") == 0){
-					rtemp->next = tex->tok->rangeListHead;
-					tex->tok->rangeListHead = (rangePair*) malloc(sizeof(rangePair));
-					strcpy(tex->ra->rangeListHead->lower, temp->sibling->child->tok->lexeme);
-				}
-				if(strcmp(temp->tok->lexeme, "..") == 0){
-					strcpy(tex->ra->rangeListHead->upper, temp->sibling->child->tok->lexeme);
-					tex->tok->rangeListHead->next = NULL;
-				}
-				rtemp = rtemp->next;
-				temp = temp->sibling;
-			}
-			tex->ra->dimensions = counter/5;
-		}
-		if(strcmp(sym.nt, "JAGGED_ARRAY") == 0){
-			if(strcmp(tree->child->sym->nt, "TWO_JA") == 0){
-				tex->ja->dimensions = 2;
-				parseTree* open_sq_ptr = tree->child->child->sibling->sibling->child;
-				if(strcmp(open_sq_ptr->sym->t, "open_sq") == 0){
-					tex->ja->lower = stoi(open_sq_ptr->sibling->child->child->sym->t);
-					tex->ja->upper = stoi(open_sq_ptr->sibling->child->sibling->sibling->child->sym->t);
-					while(open_sq_ptr->sibling != NULL){
-						open_sq_ptr = open_sq_ptr->sibling;
-					}
-					parseTree* R1ptr = open_sq_ptr->child;
-					tex->ja->rowListHead = R1ptr;
-					// parseTree* tempR1ptr = R1ptr;
-					row* oldrow = NULL;
-					int counter = tex->ja->upper - tex->ja->lower + 1;
-					while(counter--){
-						row* temp = (row*) malloc(sizeof(row));
-						temp->size = stoi(R1ptr->sibling->sibling->sibling->sibling->sibling->sibling->sym->t);
-						temp->innerSizeHead = NULL;
-						temp->next = NULL;
-						if(oldrow != NULL) oldrow->next = temp;
-						oldrow = temp;
-						while(R1ptr->sibling != NULL) R1ptr = R1ptr->sibling;
-						R1ptr = R1ptr->child;
-					}
-				} 
-			}
-			if(strcmp(tree->child->sym.nt, "THREE_JA") == 0){
-				tex->ja->dimensions = 3;
-				parseTree* open_sq_ptr = tree->child->child->sibling->sibling->child;
-				if(strcmp(open_sq_ptr->sym->t, "open_sq") == 0){
-					tex->ja->lower = stoi(open_sq_ptr->sibling->child->child->sym->t);
-					tex->ja->upper = stoi(open_sq_ptr->sibling->child->sibling->sibling->child->sym->t);
-					while(open_sq_ptr->sibling != NULL){
-						open_sq_ptr = open_sq_ptr->sibling;
-					}
-					parseTree* R1ptr = open_sq_ptr->child;
-					tex->ja->rowListHead = R1ptr;
-					row* oldrow = NULL;
-					int counter = tex->ja->upper - tex->ja->lower + 1;
-					while(counter--){
-						row* temp = (row*) malloc(sizeof(row));
-						temp->size = stoi(R1ptr->sibling->sibling->sibling->sibling->sibling->sibling->sym->t);
-						
-						open_curly_ptr = R1ptr->sibling->sibling->sibling->sibling->sibling->sibling->sibling->sibling->sibling->sibling;
-						
-						innerSize* copy_inner = NULL;
-
-						parseTree* firstnum = open_curly_ptr->sibling->child->child;
-
-						temp->innerSizeHead = NULL;
-
-						while(strcmp(firstnum->sibling->child, "epsilon") != 0){
-							int indim = 0;
-							innerSize* dummy_inner = (innerSize*) malloc(sizeof(innerSize)); 
-							if(temp->innerSizeHead == NULL) temp->innerSizeHead = dummy_inner;
-							while(strcmp(firstnum->sym->t , "epsilon") != 0){
-								firstnum = firstnum->sibling->child;
-								indim++;
-							}
-
-							dummy_inner->innerdim = indim;
-							dummy_inner->next = NULL;
-							if(copy_inner != NULL) copy_inner->next = dummy_inner;
-							copy_inner = dummy_inner;
-							// temp->innerSizeHead->innerdim = indim;
-							// temp->innerSizeHead->next = __________;
-						}
-
-						temp->next = NULL;
-						if(oldrow != NULL) oldrow->next = temp;
-						oldrow = temp;
-						while(R1ptr->sibling != NULL) R1ptr = R1ptr->sibling;
-						R1ptr = R1ptr->child;
-					}
-				}
-			}
-		}
-	}
-	return tex;
-}
-
 special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter){
 	special st, ret_st;
 	ret_st.pt = NULL;
@@ -431,6 +339,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 	t->sym = lhs_sym;
 	t->sibling = NULL;
 	t->child = NULL;
+    t->tok = NULL;
 
 	Stack* stack = createStack(100);
 	Stack* aux = createStack(100);
@@ -439,15 +348,8 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 	if(ret_st.verdict == true) return ret_st;
 	copy_stack(aux,stack);
 
-	printf("Start of subtree %s\n", lhs_sym->nt);
+//	printf("Start of subtree %s\n", lhs_sym->nt);
 	parseTree* temp;
-	/*
-	if(strcmp(lhs_sym->nt,"DIMS")==0 && strcmp(head->token_name,"of") == 0){
-		
-		ret_st.verdict = false;
-		return ret_st;
-	} 
-	*/
 	while(!isEmpty(stack))
 	{	
 		int nextcounter = 0;
@@ -455,7 +357,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 		if(head == NULL) break;
 	
 		if(strcmp(stack->array[stack->top].t,"epsilon") == 0){
-					printf("EPSILON found\n");
+//					printf("EPSILON found\n");
 					temp = (parseTree*)malloc(sizeof(parseTree));
 					t->child = temp;
 					temp->sym = &(stack->array[stack->top]);
@@ -568,22 +470,158 @@ void printParseTree(parseTree* tree){
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/
 
-void traverseParseTreeA(parseTree* tree, typeElement* table){
-	if(tree == NULL) return;
-	tree->tex = populateTex(tree);
-	if(!tree->sym->is_terminal){
-		traverseParseTreeA(tree->child);
+typeExp* populateTex(parseTree* tree){
+	symbol sym = *(tree->sym);
+	typeExp* tex = (typeExp*) malloc(sizeof(typeExp));
+	if(sym.is_terminal){
+		if(strcmp(sym.t, "integer") == 0){
+			strcpy(tex->prim_type, "integer");
+		}
+		else if(strcmp(sym.t, "real") == 0){
+			strcpy(tex->prim_type, "real");	
+		}
+		else if(strcmp(sym.t, "boolean") == 0){
+			strcpy(tex->prim_type, "boolean");
+		}
+		else {
+			tex = NULL;
+		}
 	}
-	traverseParseTreeA(tree->sibling);
-	//self
-	// field 1 table->varname = 
-	
+	else{
+		//sym is a non-terminal, then what?
+		if(strcmp(sym.nt, "REC_ARRAY") == 0){
+			parseTree* temp = tree;
+            tokenStream *token = tree->child->tok;
+            printf("%s\n", tree->child->sym->nt);
+            //printf("%s", token->lexeme);
+            int counter = 0;
+			rangePair* rtemp ; //= (rangePair*) malloc(sizeof(rangePair));
+            //if(temp->tok == NULL) printf("0\n");
+			rangePair* orig_rtemp = NULL;
+			while(strcmp(token->lexeme, "of") != 0){
+                printf("1\n");
+				counter++;
+				if(strcmp(token->lexeme, "[") == 0){
+                    rtemp = (rangePair*) malloc(sizeof(rangePair));
+                    if(tex->ra.rangeListHead == NULL){
+                        tex->ra.rangeListHead = rtemp;
+                    }
+                    else{
+                        orig_rtemp->next = rtemp;
+                    }
+					//rtemp->next = tex->ra.rangeListHead;
+					//tex->ra.rangeListHead = (rangePair*) malloc(sizeof(rangePair));
+					strcpy(rtemp->lower, token->next->lexeme);
+                    printf("2\n");
+				}
+				if(strcmp(token->lexeme, "..") == 0){
+                    printf("3\n");
+					strcpy(rtemp->upper, token->next->lexeme);
+                    printf("4\n");
+                    orig_rtemp = rtemp;
+                    //tex->ra.rangeListHead->next = NULL;
+				}
+				//rtemp = rtemp->next;
+				token = token->next;
+                //tex->ra.rangeListHead = rtemp;
+			}
+            printf("5\n");
+			tex->ra.dimensions = counter/5;
+		}
+		else if(strcmp(sym.nt, "JAGGED_ARRAY") == 0){
+			if(strcmp(tree->child->sym->nt, "TWO_JA") == 0){
+				tex->ja.dimensions = 2;
+				parseTree* open_sq_ptr = tree->child->child->sibling->sibling->child;
+				if(strcmp(open_sq_ptr->sym->t, "open_sq") == 0){
+					tex->ja.lower = atoi(open_sq_ptr->sibling->child->child->sym->t);
+					tex->ja.upper = atoi(open_sq_ptr->sibling->child->sibling->sibling->child->sym->t);
+					while(open_sq_ptr->sibling != NULL){
+						open_sq_ptr = open_sq_ptr->sibling;
+					}
+					parseTree* R1ptr = open_sq_ptr->child;
+					tex->ja.rowListHead = NULL;
+					// parseTree* tempR1ptr = R1ptr;
+					row* oldrow = NULL;
+                    row* temp = NULL;
+					int counter = tex->ja.upper - tex->ja.lower + 1;
+					while(counter--){
+						temp = (row*) malloc(sizeof(row));
+                        if(tex->ja.rowListHead == NULL) tex->ja.rowListHead = temp;
+						temp->size = atoi(R1ptr->sibling->sibling->sibling->sibling->sibling->sibling->sym->t);
+						temp->innerSizeHead = NULL;
+						temp->next = NULL;
+						if(oldrow != NULL) oldrow->next = temp;
+						oldrow = temp;
+						while(R1ptr->sibling != NULL) R1ptr = R1ptr->sibling;
+						R1ptr = R1ptr->child;
+					}
+				} 
+			}
+			else if(strcmp(tree->child->sym->nt, "THREE_JA") == 0){
+				tex->ja.dimensions = 3;
+				parseTree* open_sq_ptr = tree->child->child->sibling->sibling->child;
+				if(strcmp(open_sq_ptr->sym->t, "open_sq") == 0){
+					tex->ja.lower = atoi(open_sq_ptr->sibling->child->child->sym->t);
+					tex->ja.upper = atoi(open_sq_ptr->sibling->child->sibling->sibling->child->sym->t);
+					while(open_sq_ptr->sibling != NULL){
+						open_sq_ptr = open_sq_ptr->sibling;
+					}
+					parseTree* R1ptr = open_sq_ptr->child, * open_curly_ptr;
+					row* oldrow = NULL, *temp = NULL;
+					int counter = tex->ja.upper - tex->ja.lower + 1;
+					while(counter--){
+						temp = (row*) malloc(sizeof(row));
+                        if(tex->ja.rowListHead == NULL) tex->ja.rowListHead = temp;
+						temp->size = atoi(R1ptr->sibling->sibling->sibling->sibling->sibling->sibling->sym->t);
+						open_curly_ptr = R1ptr->sibling->sibling->sibling->sibling->sibling->sibling->sibling->sibling->sibling->sibling;
+						innerSize* copy_inner = NULL;
+						parseTree* firstnum = open_curly_ptr->sibling->child->child;
+						temp->innerSizeHead = NULL;
 
+						while(strcmp(firstnum->sibling->child->sym->t, "epsilon") != 0){
+							int indim = 0;
+							innerSize* dummy_inner = (innerSize*) malloc(sizeof(innerSize)); 
+							if(temp->innerSizeHead == NULL) temp->innerSizeHead = dummy_inner;
+							while(strcmp(firstnum->sym->t , "epsilon") != 0){
+								firstnum = firstnum->sibling->child;
+								indim++;
+							}
+							dummy_inner->innerdim = indim;
+							dummy_inner->next = NULL;
+							if(copy_inner != NULL) copy_inner->next = dummy_inner;
+							copy_inner = dummy_inner;
+							// temp->innerSizeHead->innerdim = indim;
+							// temp->innerSizeHead->next = __________;
+						}
+
+						temp->next = NULL;
+						if(oldrow != NULL) oldrow->next = temp;
+						oldrow = temp;
+						while(R1ptr->sibling != NULL) R1ptr = R1ptr->sibling;
+						R1ptr = R1ptr->child;
+					}
+				}
+			}
+		}
+        else{
+            tex = NULL;
+        }
+	}
+	return tex;
 }
 
 
+void traverseParseTreeA(parseTree* tree){
+	if(tree == NULL) return;
+	tree->tex = populateTex(tree);
+    if(tree->tex != NULL) printf("%s %s \n", tree->tex->prim_type, tree->sym->t);
+    //else printf("NULL for %s\n", tree->sym->t);
+	if(!tree->sym->is_terminal){
+		traverseParseTreeA(tree->child);
+	}
+	traverseParseTreeA(tree->sibling); 
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -621,10 +659,10 @@ int main(){
 	
 	parseTree* tree;
 	tree = createParseTree(tree,head,G);
-	printf("\n\n");
-	printParseTree(tree);
+	//printf("\n\n");
+	//printParseTree(tree);
 	
-	//printf("%s", tree->child->sibling->sibling->sibling->child->child->child->sym->nt);
+	traverseParseTreeA(tree);
 	
 	return 0;
 }
