@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <limits.h>
 #define num_rules 72
+int numvars = 0;
 
 typedef struct symbol{
     union
@@ -83,7 +84,7 @@ typedef struct parseTree {
     struct parseTree *child;   // point to children of this node
     struct parseTree *sibling;    // point to next node at same level
 	tokenStream tok;			// for line num and lexeme, add in create parse tree
-	//union
+	enum {Primitive, Rect_Array, Jagged_Array} dtype;
 	typeExp* tex;
 } parseTree;
 
@@ -481,6 +482,7 @@ typeExp* populateTex(parseTree* tree){
 	symbol sym = *(tree->sym);
 	typeExp* tex = (typeExp*) malloc(sizeof(typeExp));
 	if(sym.is_terminal){
+		tree->dtype = 0;
 		if(strcmp(sym.t, "integer") == 0){
 			strcpy(tex->prim_type, "integer");
 		}
@@ -497,6 +499,7 @@ typeExp* populateTex(parseTree* tree){
 	else{
 		//sym is a non-terminal, then what?
 		if(strcmp(sym.nt, "REC_ARRAY") == 0){
+			tree->dtype = 1;
 			parseTree* temp = tree;
             tokenStream *token = &tree->child->tok;
             printf("%s\n", tree->child->sym->nt);
@@ -535,6 +538,7 @@ typeExp* populateTex(parseTree* tree){
 
 		}
 		else if(strcmp(sym.nt, "JAGGED_ARRAY") == 0){
+			tree->dtype = 2;
 			tree = tree->child;
 			if(strcmp(tree->sym->nt, "TWO_JA") == 0){
 				tex->ja.dimensions = 2;	
@@ -603,14 +607,157 @@ void traverseParseTreeA(parseTree* tree){
 		temp = temp->child->child;
 		tree->tex = populateTex(temp);
 		//printf("\n\ndeclare %d\n", tree->tex->ra.dimensions);
-	} 
+	}
 	if(!tree->sym->is_terminal){
 		traverseParseTreeA(tree->child);
 	}
 	traverseParseTreeA(tree->sibling); 
 }
 
+void printError(int e){
+	/*
+		Type Mismatch
+		2D Jagged Array size error
+		3D Jagged Array size error
+		RectArray IOB
+	*/
+	switch(e){
+		case 1: {
+			printf("Type Mismatch\n");
+			break;
+		}
+		case 2: {
+			printf("2D JaggedArray size error\n");
+			break;
+		}
+		case 3: {
+			printf("3D JaggedArray size error\n");
+			break;
+		}
+		case 4: {
+			printf("Rect Array Index Out of Bounds error\n");
+			break;
+		}
+		default: printf("Some other error\n");
+	}
+
+}
+
+typeElement fetchTypeElement(typeElement* table, char* lexeme){
+	int i;
+	for(i = 0; i < numvars; i++){
+		if(strcmp(table[i].varname, lexeme) == 0){
+			break;
+		}	
+	}
+	return table[i];
+}
+
+typeElement populateTypeElement(parseTree* tree, char* varname){
+		// TODO: Errors need to be handled here itself
+		typeElement temp; 
+		temp.varname = varname;
+		temp.dtype = tree->dtype;
+		if(temp.dtype == 1){
+			// write for nature;
+		} else temp.nature = 2;
+		temp.tex = *tree->tex;
+
+		return temp;
+}
+
+
+// bool areTexEqual(typeExp t1, typeExp t2){
+// 	return ();
+// }
+
+// bool areTypeElemsEqual(typeElement t1, typeElement t2){
+// 	return (t1.varname == t2.varname && t1.dtype == t2.dtype && areTexEqual(t1.tex, t2.tex) && t1.nature == t2.nature);
+// }
+
+
+typeElement recursiveTraverse(parseTree* tree){
+	if(tree->child == NULL && tree->sibling == NULL){
+		return fetchTypeElement(table, tree->tok.lexeme);
+	}
+	else if(tree->child == NULL && tree->sibling != NULL){
+		char* lexeme;
+		strcpy(lexeme, tree->tok.lexeme);
+		typeElement tel = fetchTypeElement(table, lexeme);
+		typeElement ptr = recursiveTraverse(tree->sibling);
+		if(memcmp(&tel, &ptr, sizeof(tel)) != 0){
+
+		}
+		// if(tel != recursiveTraverse(tree->sibling)) {/* ERROR*/}
+		else{
+			return tel;
+		}
+	} 
+	else if(tree->child != NULL && tree->sibling == NULL){
+		char* lexeme;
+		strcpy(lexeme, tree->tok.lexeme);
+		typeElement tel = fetchTypeElement(table, lexeme);
+		typeElement ptr = recursiveTraverse(tree->child);
+		if(memcmp(&tel, &ptr, sizeof(tel)) != 0){
+
+		}
+		// if(tel != recursiveTraverse(tree->child)) {/* ERROR*/}
+		else{
+			return tel;
+		}
+	}
+	else if(tree->child != NULL && tree->sibling != NULL){
+		typeElement tel = recursiveTraverse(tree->sibling);
+		typeElement ptr = recursiveTraverse(tree->child);
+		if(memcmp(&tel, &ptr, sizeof(tel)) != 0){
+
+		}
+		// if(tel != recursiveTraverse(tree->child)) {/* ERROR*/}
+		else{
+			return tel;
+		}
+	}
+
+}
+
+typeElement* table;  // put this inside the main parseTree func
+void traverseParseTreeB(typeElement* table, parseTree* tree, int index){
+	// For Assignment Statements
+	if(tree == NULL) return;
+	if(strcmp(tree->sym->nt,"ASSIGNMENT_STATEMENT") == 0){
+		parseTree* temp = tree;
+		
+	}
+
+	// For Declaration statements:
+	if(strcmp(tree->sym->nt, "declare") == 0){
+		parseTree* declareptr = tree;
+		if(strcmp(tree->sibling->sym->nt, "id") == 0){
+			table[index++] = populateTypeElement(tree, tree->sibling->tok.lexeme);
+			numvars++;
+		} else{
+			tree = tree->sibling->sibling->sibling->sibling; // now pointing to idlist
+			while(tree->sibling != NULL){
+				table[index++] = populateTypeElement(tree->child, tree->child->tok.lexeme);
+				tree = tree->child->sibling;
+				numvars++;
+			}
+		}
+	}
+	if(!tree->sym->is_terminal){
+		traverseParseTreeB(table, tree->child, index);
+	}
+	traverseParseTreeB(table, tree->sibling, index);
+	
+}
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
 
 int main(){
 	// bool val; // default false;

@@ -64,7 +64,6 @@ typedef union typeExp {
     jaggedArrayType ja;
 	rectArrayType ra;
     char prim_type[10];
-
 } typeExp;
 
 typedef struct typeElement{
@@ -81,7 +80,7 @@ typedef struct parseTree {
     struct parseTree *child;   // point to children of this node
     struct parseTree *sibling;    // point to next node at same level
 	tokenStream tok;			// for line num and lexeme, add in create parse tree
-	//union
+	enum {Primitive, Rect_Array, Jagged_Array} dtype;
 	typeExp* tex;
 } parseTree;
 
