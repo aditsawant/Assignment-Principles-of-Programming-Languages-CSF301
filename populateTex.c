@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <limits.h>
-#define num_rules 72
+#define num_rules 68
 
 typedef struct symbol{
     union
@@ -82,7 +82,7 @@ typedef struct parseTree {
     symbol* sym;
     struct parseTree *child;   // point to children of this node
     struct parseTree *sibling;    // point to next node at same level
-	tokenStream* tok;			// for line num and lexeme, add in create parse tree
+	tokenStream tok;			// for line num and lexeme, add in create parse tree
 	//union
 	typeExp* tex;
 } parseTree;
@@ -339,7 +339,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 	t->sym = lhs_sym;
 	t->sibling = NULL;
 	t->child = NULL;
-    t->tok = NULL;
+    //t->tok = NULL;
 
 	Stack* stack = createStack(100);
 	Stack* aux = createStack(100);
@@ -363,7 +363,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 					temp->sym = &(stack->array[stack->top]);
 					temp->sibling = NULL;
 					temp->child = NULL;
-					temp->tok = NULL;
+					//temp->tok = NULL;
 					pop(stack);
 		}
 		else if(stack->array[stack->top].is_terminal)
@@ -382,7 +382,13 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 				temp->sym = &(stack->array[stack->top]);
 				temp->sibling = NULL;
 				temp->child = NULL;
-				temp->tok = head;
+				temp->tok = *head;
+				/*
+				if(strcmp(head->lexeme,"array") == 0){
+					printf("YES\n");
+					printf("%s\n", temp->tok->lexeme);
+				} 
+				*/
 				head = head->next;
 				pop(stack);
 			}
@@ -406,7 +412,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 				if(t->child != NULL){
 					head = st.endhead;
 					temp = t->child;
-					temp->tok = NULL;
+					//temp->tok = NULL;
 				}
 				/*
 				else{
@@ -429,7 +435,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 //				printf("Head before %s\n", head->lexeme);
 				if(temp->sibling != NULL){
 					head = st.endhead;
-					temp->tok = NULL;
+					//temp->tok = NULL;
 					temp = temp->sibling;
 				}
 				/*
@@ -464,7 +470,7 @@ void printParseTree(parseTree* tree){
 		printParseTree(tree->child);
 	}
 	else{
-		printf("%s ", tree->sym->t);
+		printf("(%s %s)", tree->sym->t, tree->tok.lexeme);
 	}
 	printParseTree(tree->sibling);
 }
@@ -492,13 +498,14 @@ typeExp* populateTex(parseTree* tree){
 		//sym is a non-terminal, then what?
 		if(strcmp(sym.nt, "REC_ARRAY") == 0){
 			parseTree* temp = tree;
-            tokenStream *token = tree->child->tok;
+            tokenStream *token = &tree->child->tok;
             printf("%s\n", tree->child->sym->nt);
-            //printf("%s", token->lexeme);
+            printf("%s", token->lexeme);
             int counter = 0;
 			rangePair* rtemp ; //= (rangePair*) malloc(sizeof(rangePair));
             //if(temp->tok == NULL) printf("0\n");
 			rangePair* orig_rtemp = NULL;
+			printf("%s\n", tree->child->tok.token_name);
 			while(strcmp(token->lexeme, "of") != 0){
                 printf("1\n");
 				counter++;
@@ -526,8 +533,8 @@ typeExp* populateTex(parseTree* tree){
 				token = token->next;
                 //tex->ra.rangeListHead = rtemp;
 			}
-            printf("5\n");
 			tex->ra.dimensions = counter/5;
+			printf("%d\n", tex->ra.dimensions);
 		}
 		else if(strcmp(sym.nt, "JAGGED_ARRAY") == 0){
 			if(strcmp(tree->child->sym->nt, "TWO_JA") == 0){
