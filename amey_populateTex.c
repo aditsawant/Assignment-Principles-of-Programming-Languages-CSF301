@@ -5,7 +5,7 @@
 #include <ctype.h>
 #include <limits.h>
 #define num_rules 72
-int numvars = 0, ind = 0;
+int numvars = 0, ind = 0, tentativeTableSize = 0;
 typedef enum {Primitive, Rect_Array, Jagged_Array} dtype;
 
 typedef struct symbol{
@@ -76,6 +76,7 @@ typedef struct typeElement{
 	dtype dtype;
 	enum { Static, Dynamic, not_applicable } nature;
 	typeExp tex;
+	bool isError;
 } typeElement;
 
 //////////////////////////////////////////////////////////////////////
@@ -261,7 +262,10 @@ char* identifyToken(char* c){
 	else if(strcmp(c,"|||") == 0) return s = "or";
 	else if(strcmp(c,"&&&") == 0) return s = "and";
 	else if(c[0] > 47 && c[0] <= 57) return s = "num";
-	else return s = "id";
+	else {
+		tentativeTableSize++;
+		return s = "id";     
+	}                         // TODO: Can implement a set for getting the total number of variables.
 }
 
 tokenStream* tokeniseSourcecode(char* fname, tokenStream *head){
@@ -463,6 +467,10 @@ parseTree* createParseTree(parseTree* t, tokenStream *head, llnode* G)
 	st = createSubTree(&(G[0].sym) , head, G, 0);
 	if(st.pt != NULL) printf("Parse Tree Created Successfully\n");
 	return t = st.pt;
+}
+
+void printTypeError(typeElement t1, typeElement t2){
+	printf("t1.");
 }
 
 void printParseTree(parseTree* tree){
@@ -706,6 +714,9 @@ typeElement recursiveTraverse(typeElement* table, parseTree* tree){
 			printf("%s %s\n", tel.varname, ptr.varname);
 			printf("telptr wala error\n");
 			printError(1);
+			typeElement errtel;
+			errtel.isError = true;
+			return errtel;
 		}
 		// if(tel != recursiveTraverse(table, tree->child)) {/* ERROR*/}
 		else{
@@ -725,21 +736,19 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 		// printTypeExpTable(table);
 		typeElement exptel;
 		if(tree->child->sibling->sym->is_terminal){
-			exptel = recursiveTraverse(table, tree->child->sibling->sibling->child); // For BooleanExp ka child
+			exptel = recursiveTraverse(table, tree->child->sibling->sibling->child);  // For BooleanExp ka child
 		}
 		else {
 			// printf("Exptel...\n");
-			exptel = recursiveTraverse(table, tree->child->sibling->sibling->sibling->child); // For Arith ka child
-			
+			exptel = recursiveTraverse(table, tree->child->sibling->sibling->sibling->child); // For Arith ka child	
 		}
 		typeElement idtel = fetchTypeElement(table, tree->child->tok.lexeme);
-
 		printf("%s %s\n", exptel.varname, idtel.varname);
 		// printf("%s %s\n", exptel.tex.prim_type, idtel.tex.prim_type);
 
 		if(memcmp(&exptel.tex, &idtel.tex, sizeof(idtel.tex)) != 0){
 			printf("exptel idtel wala error\n");
-			// printError(5);
+			printError(1);
 		}
 		// if(tel != recursiveTraverse(table, tree->child)) {/* ERROR*/}
 	}
@@ -831,13 +840,13 @@ int main(){
 		head = head->before;
 	}
 	*/
-	
+	printf("%d\n", tentativeTableSize);
 	parseTree* tree;
 	tree = createParseTree(tree,head,G);
 	//printf("\n\n");
 	//printParseTree(tree);
 	
-	typeElement* table = (typeElement*) malloc(sizeof(typeElement)*6); 
+	typeElement* table = (typeElement*) malloc(sizeof(typeElement)*tentativeTableSize); 
 	traverseParseTree(table, tree);
 	
 	return 0;
