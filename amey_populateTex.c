@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <limits.h>
-#define num_rules 72
+#define num_rules 66
 int numvars = 0, ind = 0, tentativeTableSize = 0;
 typedef enum {Primitive, Rect_Array, Jagged_Array} dtype;
 
@@ -233,7 +233,8 @@ char* identifyToken(char* c){
 	char * s = (char*)malloc(sizeof(char)*30);
 	if(s == NULL) printf("malloc unsuccessful\n");
 	if(strcmp(c,"program") == 0) return s = "program";
-	else if(strcmp(c,"()") == 0) return s = "brackets";
+    else if(strcmp(c,"(") == 0) return s = "open_p";
+	else if(strcmp(c,")") == 0) return s = "close_p";
 	else if(strcmp(c,"{") == 0) return s = "open_curl";
 	else if(strcmp(c,"}") == 0) return s = "close_curl";
 	else if(strcmp(c,"declare") == 0) return s = "declare";
@@ -263,7 +264,6 @@ char* identifyToken(char* c){
 	else if(strcmp(c,"&&&") == 0) return s = "and";
 	else if(c[0] > 47 && c[0] <= 57) return s = "num";
 	else {
-		tentativeTableSize++;
 		return s = "id";     
 	}                         // TODO: Can implement a set for getting the total number of variables.
 }
@@ -469,10 +469,6 @@ parseTree* createParseTree(parseTree* t, tokenStream *head, llnode* G)
 	return t = st.pt;
 }
 
-void printTypeError(typeElement t1, typeElement t2){
-	printf("t1.");
-}
-
 void printParseTree(parseTree* tree){
 	if(tree == NULL) return;
 	if(!tree->sym->is_terminal){
@@ -484,6 +480,7 @@ void printParseTree(parseTree* tree){
 	}
 	printParseTree(tree->sibling);
 }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void printTypeExpTable(typeElement* table){
 	for(int i = 0; i < numvars; i++){
@@ -491,12 +488,42 @@ void printTypeExpTable(typeElement* table){
 	}
 }
 
+void printTypeError(typeElement t1, typeElement t2, parseTree* tree, int line, char* lex){ //incomplete
+	char type1[20], type2[20];
+    if(t1.dtype==0){
+        strcpy(type1,t1.tex.prim_type);
+    }
+    else if(t1.dtype==1){
+        strcpy(type1,"rect_array");
+    }
+    else{
+        strcpy(type1,"jagged_array");
+    }
+    if(t2.dtype==0){
+        strcpy(type2,t2.tex.prim_type);
+    }
+    else if(t2.dtype==1){
+        strcpy(type2,"rect_array");
+    }
+    else{
+        strcpy(type2,"jagged_array");
+    }
+    if(strcmp(type1,type2)!=0){
+        printf("\nLine Number %d\n", line);
+        printf("Statement type : Assignment\n");
+        printf("Operator %s\n", lex);
+        printf("First operand lexeme %s and type %s and dtype %d\n", t2.varname, type2, t2.dtype);
+        printf("Second operand lexeme %s and type %s and dtype %d\n", t1.varname, type1, t1.dtype);
+        //depth, msg
+    }
+    return;
+}
 
-typeExp* populateTex(parseTree* tree){
+typeExp* populateTex(parseTree* dec, parseTree* tree){
 	symbol sym = *(tree->sym);
 	typeExp* tex = (typeExp*) malloc(sizeof(typeExp));
 	if(sym.is_terminal){
-		tree->dtype = 0;
+		dec->dtype = 0;
 		if(strcmp(sym.t, "integer") == 0){
 			strcpy(tex->prim_type, "integer");
 		}
@@ -513,14 +540,14 @@ typeExp* populateTex(parseTree* tree){
 	else{
 		//sym is a non-terminal, then what?
 		if(strcmp(sym.nt, "REC_ARRAY") == 0){
-			tree->dtype = 1;
+			dec->dtype = 1;
 			parseTree* temp = tree;
             tokenStream *token = &tree->child->tok;
-            printf("%s\n", tree->child->sym->nt);
-            printf("%s", token->lexeme);
+            //printf("%s\n", tree->child->sym->nt);
+            //printf("%s", token->lexeme);
             int counter = 0;
 			rangePair* rtemp, * orig_rtemp = NULL;
-			printf("%s\n", tree->child->tok.token_name);
+			//printf("%s\n", tree->child->tok.token_name);
 			while(strcmp(token->lexeme, "of") != 0){
 				counter++;
 				if(strcmp(token->lexeme, "[") == 0){
@@ -549,10 +576,9 @@ typeExp* populateTex(parseTree* tree){
 				ptr = ptr->next;
 			}
 			*/
-
 		}
 		else if(strcmp(sym.nt, "JAGGED_ARRAY") == 0){
-			tree->dtype = 2;
+			dec->dtype = 2;
 			tree = tree->child;
 			if(strcmp(tree->sym->nt, "TWO_JA") == 0){
 				tex->ja.dimensions = 2;	
@@ -616,10 +642,18 @@ typeExp* populateTex(parseTree* tree){
 void traverseParseTreeA(parseTree* tree){
 	if(tree == NULL || strcmp(tree->sym->nt,"ASSIGNMENT_STATEMENTS") == 0) return;
 	if(strcmp(tree->sym->t,"declare") == 0){
+        //to find tablesize
+        parseTree* ptr = tree->sibling;
+        if(strcmp(ptr->tok.lexeme,"list") == 0) ptr = ptr->sibling->sibling->sibling;
+        while(strcmp(ptr->tok.lexeme,":")!=0){
+            ptr = ptr->sibling;
+            tentativeTableSize++;
+        }
+        //to populate tex
 		parseTree* temp = tree;
 		while(temp->sibling != NULL) temp = temp->sibling;
 		temp = temp->child->child;
-		tree->tex = populateTex(temp);
+		tree->tex = populateTex(tree,temp);
 		//printf("\n\ndeclare %d\n", tree->tex->ra.dimensions);
 	}
 	if(!tree->sym->is_terminal){
@@ -676,7 +710,7 @@ typeElement populateTypeElement(parseTree* tree, char* varname){
 		typeElement temp; 
 		temp.varname = varname;
 		temp.dtype = tree->dtype;
-		printf("dtype: %d\n", temp.dtype);
+		printf("%s dtype: %d, %d\n", tree->sym->nt, temp.dtype, tree->dtype);
 		if(temp.dtype == 1){
 			// write for nature;
 		} else temp.nature = 2;
@@ -694,38 +728,40 @@ typeElement populateTypeElement(parseTree* tree, char* varname){
 // }
 
 
-typeElement recursiveTraverse(typeElement* table, parseTree* tree){
+typeElement recursiveTraverse(typeElement* table, parseTree* tree, int line){
 	if(tree->child == NULL && tree->sibling == NULL){
-		printf("Both NULL reached for %s.\n", tree->tok.lexeme);
+		//printf("Both NULL reached for %s.\n", tree->tok.lexeme);
 		typeElement tempo = fetchTypeElement(table, tree->tok.lexeme); //Correct
-		printf("%s\n", tempo.varname);
+		//printf("%s\n", tempo.varname);
 		return tempo;
 	}
 	else if(tree->child == NULL && tree->sibling != NULL){
-		return recursiveTraverse(table, tree->sibling); // Correct
+        if(strcmp(tree->sibling->sym->t, "open_sq")==0){
+            //bound checking 
+            return fetchTypeElement(table,tree->tok.lexeme);
+        }
+		else return recursiveTraverse(table, tree->sibling, line); // Correct
 	} 
 	else if(tree->child != NULL && tree->sibling == NULL){
-		return recursiveTraverse(table, tree->child); // Correct?
+		return recursiveTraverse(table, tree->child, line); // Correct?
 	}
 	else if(tree->child != NULL && tree->sibling != NULL){
-		typeElement tel = recursiveTraverse(table, tree->sibling);
-		typeElement ptr = recursiveTraverse(table, tree->child);
-		if(memcmp(&tel.tex, &ptr.tex, sizeof(tel.tex)) != 0){
-			printf("%s %s\n", tel.varname, ptr.varname);
+		typeElement tel = recursiveTraverse(table, tree->sibling, line);
+		typeElement ptr = recursiveTraverse(table, tree->child, line);
+		if(tel.isError || ptr.isError || memcmp(&tel.tex, &ptr.tex, sizeof(tel.tex)) != 0){
+			//printf("%s %s\n", tel.varname, ptr.varname);
 			printf("telptr wala error\n");
-			printError(1);
-			typeElement errtel;
-			errtel.isError = true;
-			return errtel;
+			printTypeError(tel,ptr,tree,line,tree->sibling->tok.lexeme);
+            tel.isError = true;
+            ptr.isError = true;
+            return ptr;
 		}
 		// if(tel != recursiveTraverse(table, tree->child)) {/* ERROR*/}
 		else{
 			return tel;
 		}
 	}
-
 }
-
 
 void traverseParseTreeB(typeElement* table, parseTree* tree){
 	// For Assignment Statements
@@ -734,41 +770,42 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 		printf("In the Assign section\n");
 		// printf("NUMVARS: %d\n", numvars);
 		// printTypeExpTable(table);
+        int line = tree->child->tok.line_num;
 		typeElement exptel;
 		if(tree->child->sibling->sym->is_terminal){
-			exptel = recursiveTraverse(table, tree->child->sibling->sibling->child);  // For BooleanExp ka child
+			exptel = recursiveTraverse(table, tree->child->sibling->sibling->child,line);  // For BooleanExp ka child
 		}
 		else {
-			// printf("Exptel...\n");
-			exptel = recursiveTraverse(table, tree->child->sibling->sibling->sibling->child); // For Arith ka child	
+			exptel = recursiveTraverse(table, tree->child->sibling->sibling->sibling->child,line); // For Arith ka child	
 		}
 		typeElement idtel = fetchTypeElement(table, tree->child->tok.lexeme);
-		printf("%s %s\n", exptel.varname, idtel.varname);
+        //bound checking for LHS id
+		//printf("%s %s\n", exptel.varname, idtel.varname);
 		// printf("%s %s\n", exptel.tex.prim_type, idtel.tex.prim_type);
 
-		if(memcmp(&exptel.tex, &idtel.tex, sizeof(idtel.tex)) != 0){
+		if(exptel.isError == true || memcmp(&exptel.tex, &idtel.tex, sizeof(idtel.tex)) != 0){
 			printf("exptel idtel wala error\n");
-			printError(1);
+			printTypeError(exptel,idtel,tree,line,"=");
 		}
 		// if(tel != recursiveTraverse(table, tree->child)) {/* ERROR*/}
 	}
 	else{
 		// For Declaration statements:
 		if(strcmp(tree->sym->nt, "declare") == 0){
-			printf("In the Declare section\n");
+			//printf("In the Declare section\n");
 			parseTree* declareptr = tree;
 			if(strcmp(tree->sibling->sym->nt, "id") == 0){
-				printf("In the single var section\n");
+				//printf("In the single var section\n");
 				table[ind] = populateTypeElement(tree, tree->sibling->tok.lexeme);
 				numvars++;
-				printf("NUMVARS: %d\n\n", numvars);
-				table = (typeElement*) realloc(table, sizeof(table) + sizeof(typeElement));
+				//printf("NUMVARS: %d\n\n", numvars);
+				//table = (typeElement*) realloc(table, sizeof(table) + sizeof(typeElement));
 				ind++;
 			} else{
-				printf("In the List of vars section\n");
+				//printf("In the List of vars section\n");
 				parseTree* idlistptr = tree->sibling->sibling->sibling->sibling; // now pointing to idlist
 				while(idlistptr->child->sibling != NULL){
-					printf("In the while loop\n");
+					//printf("In the while loop\n");
 					typeElement temptel = populateTypeElement(tree, idlistptr->child->tok.lexeme);
 					// printf("%d\n", ind);
 					
@@ -776,7 +813,7 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 					// printf("Out\n");
 					idlistptr = idlistptr->child->sibling;
 					numvars++;
-					printf("NUMVARS: %d\n\n", numvars);
+					//printf("NUMVARS: %d\n\n", numvars);
 					// printf("Before\n");
 					// table = (typeElement*) realloc(table, sizeof(typeElement) * (numvars+5));
 					// printf("After\n");
@@ -788,7 +825,7 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 					table[ind] = temptel;
 					idlistptr = idlistptr->child->sibling;
 					numvars++;
-					printf("NUMVARS: %d\n\n", numvars);
+					//printf("NUMVARS: %d\n\n", numvars);
 					// table = (typeElement*) realloc(table, sizeof(typeElement) * (numvars+5));
 					ind++;
 			}
@@ -802,10 +839,12 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 }
 
 
-void traverseParseTree(typeElement* table, parseTree* tree){
+typeElement* traverseParseTree(typeElement* table, parseTree* tree){
 	traverseParseTreeA(tree);
+    table = (typeElement*) malloc(sizeof(typeElement)*tentativeTableSize);
 	traverseParseTreeB(table, tree);
 	printf("\nTraversal Completed Successfully\n");
+    return table;
 }
 
 
@@ -815,7 +854,7 @@ int main(){
 	// printf("%s", val ? "true" : "false");
 	
 	llnode* G = (llnode*) malloc(sizeof(llnode)*80);
-	readGrammar("grammar.txt", G);
+	readGrammar("newgrammar.txt", G);
 	/*
 	for(int i=0; i<67; i++){
 		llnode* temp = G+i;
@@ -829,7 +868,7 @@ int main(){
 	}
 	*/
 	tokenStream* head;
-	head = tokeniseSourcecode("sourcecode3.txt", head);
+	head = tokeniseSourcecode("sourcecode.txt", head);
 	/*
 	while(head->next != NULL){
 		printf("%s\n", head->token_name);
@@ -840,14 +879,14 @@ int main(){
 		head = head->before;
 	}
 	*/
-	printf("%d\n", tentativeTableSize);
 	parseTree* tree;
 	tree = createParseTree(tree,head,G);
 	//printf("\n\n");
 	//printParseTree(tree);
 	
-	typeElement* table = (typeElement*) malloc(sizeof(typeElement)*tentativeTableSize); 
-	traverseParseTree(table, tree);
-	
+	typeElement* table; 
+	table = traverseParseTree(table, tree);
+    printf("\n");
+	printTypeExpTable(table);
 	return 0;
 }
