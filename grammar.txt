@@ -1,4 +1,4 @@
-MAINPROG program brackets open_curl PROG close_curl
+MAINPROG program open_p close_p open_curl PROG close_curl
 PROG DEC_STATEMENTS ASSIGNMENT_STATEMENTS
 
 DEC_STATEMENTS DEC_STATEMENT DEC_STATEMENTS
@@ -28,21 +28,15 @@ INDEX id
 JAGGED_ARRAY TWO_JA
 JAGGED_ARRAY THREE_JA
 
-THREE_JA jagged array JA_DIM open_sq close_sq open_sq close_sq of integer semicol FILL3D_JAGGED
-FILL3D_JAGGED R1 open_sq num close_sq colon size num colon values open_curl MULTINUM_LIST close_curl FILL3D_JAGGED
-FILL3D_JAGGED epsilon
+TWO_JA jagged array JA_DIM open_sq close_sq of integer semicol FILL_JAGGED
+THREE_JA jagged array JA_DIM open_sq close_sq open_sq close_sq of integer semicol FILL_JAGGED
+FILL_JAGGED R1 open_sq num close_sq colon size num colon values open_curl MULTINUM_LIST close_curl FILL_JAGGED
+FILL_JAGGED epsilon
 MULTINUM_LIST MULTINUM MULTINUM_CONT
 MULTINUM_CONT semicol MULTINUM MULTINUM_CONT
 MULTINUM_CONT epsilon
 MULTINUM num MULTINUM
 MULTINUM epsilon
-
-TWO_JA jagged array JA_DIM open_sq close_sq of integer semicol FILL2D_JAGGED
-FILL2D_JAGGED R1 open_sq num close_sq colon size num colon values open_curl NUM_LIST close_curl FILL2D_JAGGED
-FILL2D_JAGGED epsilon
-NUM_LIST num NUM_CONT 
-NUM_CONT semicol num NUM_CONT
-NUM_CONT epsilon
 
 JA_DIM open_sq JA_RANGE close_sq
 JA_RANGE JA_INDEX rangeop JA_INDEX
