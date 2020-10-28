@@ -5,7 +5,7 @@
 #include <ctype.h>
 #include <limits.h>
 #define num_rules 72
-int numvars = 0;
+int numvars = 0, ind = 0;
 typedef enum {Primitive, Rect_Array, Jagged_Array} dtype;
 
 typedef struct symbol{
@@ -715,7 +715,6 @@ typeElement recursiveTraverse(typeElement* table, parseTree* tree){
 
 }
 
-int ind = 0;
 
 void traverseParseTreeB(typeElement* table, parseTree* tree){
 	// For Assignment Statements
@@ -799,9 +798,6 @@ void traverseParseTree(typeElement* table, parseTree* tree){
 	traverseParseTreeB(table, tree);
 	printf("\nTraversal Completed Successfully\n");
 }
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
 
 
 
