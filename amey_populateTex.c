@@ -511,12 +511,55 @@ void printTypeError(typeElement t1, typeElement t2, parseTree* tree, int line, c
     if(strcmp(type1,type2)!=0){
         printf("\nLine Number %d\n", line);
         printf("Statement type : Assignment\n");
-        printf("Operator %s\n", lex);
-        printf("First operand lexeme %s and type %s and dtype %d\n", t2.varname, type2, t2.dtype);
-        printf("Second operand lexeme %s and type %s and dtype %d\n", t1.varname, type1, t1.dtype);
+        printf("Operator %s\n", lex); 
+        printf("First operand lexeme %s and type %s\n", t2.varname, type2);
+        printf("Second operand lexeme %s and type %s\n", t1.varname, type1);
         //depth, msg
     }
     return;
+}
+void printTypeDefError(typeExp* tex, int line){
+
+    printf("\nLine Number %d\n", line);
+    printf("Statement type : Declaration\n");
+    printf("Operator ***\n");
+    printf("First operand lexeme *** and type ***\n");
+    printf("Second operand lexeme *** and type ***\n");
+    //depth
+    printf("%d-D Jagged Array Type Definition Error\n", tex->ja.dimensions);
+}
+
+void printSizeMismatchError(typeExp* tex, int sz, int line){
+    printf("\nLine Number %d\n", line);
+    printf("Statement type : Declaration\n");
+    printf("Operator ***\n");
+    printf("First operand lexeme *** and type ***\n");
+    printf("Second operand lexeme *** and type ***\n");
+    //depth
+    printf("%d-D Jagged Array Size Mismatch Error because size is %d\n", tex->ja.dimensions, sz);
+}
+
+void validateJA(typeExp* tex, int line){
+    line++;
+    row* ptr = tex->ja.rowListHead;
+    while(ptr != NULL){
+        int sizecounter = 0;
+        //printf("%d\n",ptr->size);
+        innerSize* itr = ptr->innerSizeHead;
+        while(itr != NULL){
+            //printf("  %d  ", itr->innerdim);
+            if((tex->ja.dimensions == 2 && itr->innerdim != 1)||(tex->ja.dimensions == 3 && itr->innerdim == 0)){
+                //printf("%d inner dims\n",itr->innerdim);
+                printTypeDefError(tex,line);
+            } 
+            itr = itr->next;
+            sizecounter++;
+        }
+        if(sizecounter != ptr->size) printSizeMismatchError(tex,ptr->size,line);
+        printf("\n");
+        ptr = ptr->next;
+        line++;
+    }
 }
 
 typeExp* populateTex(parseTree* dec, parseTree* tree){
@@ -616,8 +659,9 @@ typeExp* populateTex(parseTree* dec, parseTree* tree){
 				}
 				oldtemp = temp;
 			}
+            validateJA(tex,dec->tok.line_num);
 			//test for jagged array
-			/*
+            /*
 			printf("%d %d\n", tex->ja.lower, tex->ja.upper);
 			row* ptr = tex->ja.rowListHead;
 			while(ptr != NULL){
@@ -868,7 +912,7 @@ int main(){
 	}
 	*/
 	tokenStream* head;
-	head = tokeniseSourcecode("sourcecode.txt", head);
+	head = tokeniseSourcecode("sourcecode3.txt", head);
 	/*
 	while(head->next != NULL){
 		printf("%s\n", head->token_name);
@@ -887,6 +931,6 @@ int main(){
 	typeElement* table; 
 	table = traverseParseTree(table, tree);
     printf("\n");
-	printTypeExpTable(table);
+	//printTypeExpTable(table);
 	return 0;
 }
