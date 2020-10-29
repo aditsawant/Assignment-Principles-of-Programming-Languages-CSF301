@@ -777,7 +777,7 @@ void traverseParseTreeA(parseTree* tree){
         while(strcmp(ptr->tok.lexeme,":")!=0){
             ptr = ptr->sibling;
             tentativeTableSize++;
-            printf("%d\n",tentativeTableSize);
+            //printf("%d\n",tentativeTableSize);
         }
         //to populate tex
 		parseTree* temp = tree;
@@ -838,6 +838,7 @@ typeElement recursiveTraverse(typeElement* table, parseTree* tree, int line){
 
 	}
 	else if(tree->child == NULL && tree->sibling != NULL){
+        
         if(strcmp(tree->sibling->sym->nt, "open_sq")==0){
             //bound checking 
             typeElement tempo = fetchTypeElement(table,tree->tok.lexeme);
@@ -855,8 +856,8 @@ typeElement recursiveTraverse(typeElement* table, parseTree* tree, int line){
                     bound = bound->next;
                     localdim++;
                 }
-            }
-            return tempo;
+            } 
+            return fetchTypeElement(table,tree->tok.lexeme);
         }
 		else return recursiveTraverse(table, tree->sibling, line); // Correct
 	} 
@@ -886,7 +887,7 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 	// For Assignment Statements
 	if(tree == NULL) return;
 	if(strcmp(tree->sym->nt,"ASSIGNMENT_STATEMENT") == 0){
-		//printf("In the Assign section\n");
+		printf("In the Assign section\n");
 		// printTypeExpTable(table);
         int line = tree->child->tok.line_num;
 		typeElement exptel;
@@ -897,7 +898,8 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 			exptel = recursiveTraverse(table, tree->child->sibling->sibling->sibling->child,line); // For Arith ka child	
 		}
 		typeElement idtel = fetchTypeElement(table, tree->child->tok.lexeme);
-        if(strcmp(tree->child->tok.next->token_name, "open_sq")==0){
+        
+        if(idtel.isError==false && (tree->child->tok.next->token_name, "open_sq")==0){
         //bound checking 
         tokenStream* ptr = tree->child->tok.next->next;
         rangePair* bound = idtel.tex.ra.rangeListHead;
@@ -1000,7 +1002,7 @@ int main(){
 	}
 	*/
 	tokenStream* head;
-	head = tokeniseSourcecode("sourcecode3.txt", head);
+	head = tokeniseSourcecode("sourcecode.txt", head);
 	//test tokenise function
     /*
 	while(head->next != NULL){
