@@ -82,7 +82,7 @@ typedef struct parseTree {
     llnode* ptr;
     struct parseTree *child;   // point to children of this node
     struct parseTree *sibling;    // point to next node at same level
-	tokenStream tok;			// for line num and lexeme, add in create parse tree
+	tokenStream tok;			// only for line num and lexeme
 	int depth;
 	dtype dtype;
 	typeExp* tex;
@@ -136,8 +136,9 @@ typedef struct special{
 }special;
 
 ///////////////////////////////////////////////////////////////////
-void readGrammar(char* fname, llnode* grammar){
-	FILE* fptr = fopen(fname, "r");
+llnode* readGrammar(char* fname, llnode* grammar){
+	grammar = (llnode*) malloc(sizeof(llnode)*num_rules);
+    FILE* fptr = fopen(fname, "r");
 	int rule_num = 0;
 	char buffer[200];
 
@@ -202,30 +203,30 @@ void readGrammar(char* fname, llnode* grammar){
 	} 
     //printf("%d",rule_num);
 	fclose(fptr);
+    return grammar;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
-char *strstrip(char *s)
+char *strstrip(char *input)
 {
-        size_t size;
+        size_t sz;
         char *end;
 
-        size = strlen(s);
+        sz = strlen(input);
 
-        if (!size)
-                return s;
+        if (!sz)
+                return input;
 
-        end = s + size - 1;
-        while (end >= s && isspace(*end))
+        end = input + sz - 1;
+        while (end >= input && isspace(*end))
                 end--;
         *(end + 1) = '\0';
 
-        while (*s && isspace(*s))
-                s++;
+        while (*input && isspace(*input))
+                input++;
 
-        return s;
+        return input;
 }
-
 
 char* identifyToken(char* c){
 	char * s = (char*)malloc(sizeof(char)*30);
@@ -773,7 +774,11 @@ typeElement recursiveTraverse(typeElement* table, parseTree* tree, int line){
 	else if(tree->child != NULL && tree->sibling != NULL){
 		typeElement tel = recursiveTraverse(table, tree->sibling, line);
 		typeElement ptr = recursiveTraverse(table, tree->child, line);
-		if(tel.isError || ptr.isError || memcmp(&tel.tex, &ptr.tex, sizeof(tel.tex)) != 0){
+		if(strcmp(tree->sibling->sym->nt,"div")==0){
+                printf("div found\n");
+                strcpy(tel.tex.prim_type,"real");
+            }
+        else if(tel.isError || ptr.isError || memcmp(&tel.tex, &ptr.tex, sizeof(tel.tex)) != 0){
 			//printf("%s %s\n", tel.varname, ptr.varname);
 			printf("telptr wala error\n");
 			printTypeError(tel,ptr,tree,line,tree->sibling->tok.lexeme);
@@ -781,10 +786,7 @@ typeElement recursiveTraverse(typeElement* table, parseTree* tree, int line){
             ptr.isError = true;
             return ptr;
 		}
-		else{
-			if(strcmp(tree->sibling->sym->nt,"div")==0) strcpy(tel.varname,"real");
-			return tel;
-		}
+        return tel;
 	}
 }
 
@@ -861,7 +863,6 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 	traverseParseTreeB(table, tree->sibling);
 }
 
-
 typeElement* traverseParseTree(typeElement* table, parseTree* tree){
 	calculateDepth(tree,0);
 	traverseParseTreeA(tree);
@@ -875,8 +876,8 @@ int main(){
 	// bool val; // default false;
 	// printf("%s", val ? "true" : "false");
 	
-	llnode* G = (llnode*) malloc(sizeof(llnode)*num_rules);
-	readGrammar("newgrammar.txt", G);
+	llnode* G;
+	G = readGrammar("newgrammar.txt", G);
 	//test read grammar function
     /*
 	for(int i=0; i<67; i++){
@@ -906,11 +907,12 @@ int main(){
 	parseTree* tree;
 	tree = createParseTree(tree,head,G);
 	//printf("\n\n");
-	printParseTree(tree);
 	
 	typeElement* table; 
 	table = traverseParseTree(table, tree);
     printf("\n");
+
+    //printParseTree(tree);
 	//printTypeExpTable(table);
 	return 0;
 }
