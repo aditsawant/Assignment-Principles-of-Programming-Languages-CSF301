@@ -11,7 +11,7 @@ MAITHIL MEHTA 2018A7PS0345P
 #include <stdbool.h>
 #include <ctype.h>
 #include <limits.h>
-#define num_rules 66
+#define num_rules 70
 int numvars = 0, ind = 0, tentativeTableSize = 0;
 char* arr[3] = {"primitive","rectangularArray","jaggedArray"};
 char* brr[3] = {"static","dynamic","not_applicable"};
@@ -878,6 +878,35 @@ typeElement recursiveTraverse(typeElement* table, parseTree* tree, int line){
                     localdim++;
                 }
             } 
+			else if(tempo.dtype==2){
+				int num = atoi(ptr->lexeme);
+				int low = tempo.tex.ja.lower;
+				int up = tempo.tex.ja.upper;
+				if(num > up) printRangeError(1, line,tree->depth,num,up,1, tempo.varname);
+				else if(num < low) printRangeError(0,line,tree->depth,num,low,1, tempo.varname);
+				else{
+					row* rowptr = tempo.tex.ja.rowListHead;
+					ptr = ptr->next;
+					int num2 = atoi(ptr->lexeme);
+					int counter = num - low;
+					while(counter--){
+						rowptr = rowptr->next;
+					}
+					if(rowptr->size < num2)  printRangeError(1, line,tree->depth,num2,rowptr->size,2, tempo.varname);
+					else{
+						if(tempo.tex.ja.dimensions==3){
+							ptr = ptr->next;
+							int num3 = atoi(ptr->lexeme);
+							int counter2 = rowptr->size - num2;
+							innerSize* inptr = rowptr->innerSizeHead;
+							while(counter2--){
+								inptr = inptr->next;
+							}
+							if(inptr->innerdim < num3) printRangeError(1, line,tree->depth,num3,inptr->innerdim,3, tempo.varname);
+						}
+					}
+				}
+			}
             return fetchTypeElement(table,tree->tok.lexeme);
         }
 		else return recursiveTraverse(table, tree->sibling, line); // Correct
@@ -929,15 +958,41 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 					int num = atoi(ptr->lexeme);
 					int low = atoi(bound->lower);
 					int up = atoi(bound->upper);
-					if(num > up) printRangeError(1, ptr->line_num,tree->depth,num,up,localdim, idtel.varname);
-					if(num < low) printRangeError(0,ptr->line_num,tree->depth,num,low,localdim, idtel.varname);
+					if(num > up) printRangeError(1,line,tree->depth,num,up,localdim, idtel.varname);
+					if(num < low) printRangeError(0,line,tree->depth,num,low,localdim, idtel.varname);
 					ptr = ptr->next;
 					bound = bound->next;
 					localdim++;
 				}
 			}
 			else if(idtel.dtype==2){
-
+				int num = atoi(ptr->lexeme);
+				int low = idtel.tex.ja.lower;
+				int up = idtel.tex.ja.upper;
+				if(num > up) printRangeError(1, line,tree->depth,num,up,1, idtel.varname);
+				else if(num < low) printRangeError(0,line,tree->depth,num,low,1, idtel.varname);
+				else{
+					row* rowptr = idtel.tex.ja.rowListHead;
+					ptr = ptr->next;
+					int num2 = atoi(ptr->lexeme);
+					int counter = num - low;
+					while(counter--){
+						rowptr = rowptr->next;
+					}
+					if(rowptr->size < num2)  printRangeError(1, line,tree->depth,num2,rowptr->size,2, idtel.varname);
+					else{
+						if(idtel.tex.ja.dimensions==3){
+							ptr = ptr->next;
+							int num3 = atoi(ptr->lexeme);
+							int counter2 = rowptr->size - num2;
+							innerSize* inptr = rowptr->innerSizeHead;
+							while(counter2--){
+								inptr = inptr->next;
+							}
+							if(inptr->innerdim < num3) printRangeError(1, line,tree->depth,num3,inptr->innerdim,3, idtel.varname);
+						}
+					}
+				}
 			}
         }
         //bound checking for LHS id
