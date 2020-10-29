@@ -546,11 +546,12 @@ void printTypeExpressionTable(typeElement* table){
             printf("basicElementType=integer>\n");
         }
 	}
+    printf("Table printed successfully!\n");
 }
 
 void printTypeError(typeElement t1, typeElement t2, parseTree* tree, int line, char* lex){ //incomplete
 	char type1[20], type2[20];
-    if(t1.dtype==0){
+	 if(t1.dtype==0){
         strcpy(type1,t1.tex.prim_type);
     }
     else if(t1.dtype==1){
@@ -559,7 +560,8 @@ void printTypeError(typeElement t1, typeElement t2, parseTree* tree, int line, c
     else{
         strcpy(type1,"jagged_array");
     }
-    if(t2.dtype==0){
+
+	 if(t2.dtype==0){
         strcpy(type2,t2.tex.prim_type);
     }
     else if(t2.dtype==1){
@@ -577,7 +579,7 @@ void printTypeError(typeElement t1, typeElement t2, parseTree* tree, int line, c
 		printf("Depth of node in parse tree %d\n", tree->depth);
         printf("Type Error\n");
     }
-	else if(t1.dtype == t2.dtype == 1){
+	else if(t1.dtype == 1 && t2.dtype == 1){
 		if(t1.tex.ra.dimensions != t2.tex.ra.dimensions){
 		printf("\nLine Number %d\n", line);
         printf("Statement type : Assignment\n");
@@ -588,7 +590,7 @@ void printTypeError(typeElement t1, typeElement t2, parseTree* tree, int line, c
         printf("Type Error, different dimensions of rect array\n");
 		}	
 	}
-	else if(t1.dtype == t2.dtype == 2){
+	else if(t1.dtype == 2 && t2.dtype == 2){
 		if(t1.tex.ja.dimensions != t2.tex.ja.dimensions){
 		printf("\nLine Number %d\n", line);
         printf("Statement type : Assignment\n");
@@ -818,15 +820,17 @@ typeElement populateTypeElement(parseTree* tree, char* varname){
 		typeElement temp; 
 		temp.varname = varname;
 		temp.dtype = tree->dtype;
-		//printf("%s dtype: %d, %d\n", tree->sym->nt, temp.dtype, tree->dtype);
+        //printf("\n\n%s\n\n",temp.varname);
+		//printf("%s %s, %d\n", tree->sym->nt, varname, tree->dtype);
         if(temp.dtype == 1){
 			// write for nature;
 			//trvaerse the ranges and check for any identifiers. 
-			rangePair* listHead = temp.tex.ra.rangeListHead;
+			rangePair* listHead = tree->tex->ra.rangeListHead;
 			while(listHead != NULL) {
 				char* l = listHead->lower;
 				char* u = listHead->upper;
-				if(isalpha(l[0]) == 0 || isalpha(u[0]) == 0){
+                //printf("\n\n%s %s %s\n\n",temp.varname,l,u);
+				if(isalpha(l[0]) != 0 || isalpha(u[0]) != 0){
 					temp.nature = 1;
                     break;
 				} 
@@ -841,8 +845,18 @@ typeElement populateTypeElement(parseTree* tree, char* varname){
 typeElement recursiveTraverse(typeElement* table, parseTree* tree, int line){
 	if(tree->child == NULL && tree->sibling == NULL){
 		//printf("Both NULL reached for %s.\n", tree->tok.lexeme);
+		/*
+		if(strcmp(tree->tok.token_name,"num")==0){
+			typeElement* numret = (typeElement*)malloc(sizeof(typeElement));
+			numret->dtype = 0;
+			//numret->varname = (char*)malloc(sizeof(char)*20);
+			//printf("%s\n",tree->tok.lexeme);
+			//strcpy(numret->varname,tree->tok.lexeme);
+			strcpy(numret->tex.prim_type,"integer");
+			return *numret;
+		} 
+		*/
 		return fetchTypeElement(table, tree->tok.lexeme); //Correct
-
 	}
 	else if(tree->child == NULL && tree->sibling != NULL){
         
@@ -905,22 +919,26 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 			exptel = recursiveTraverse(table, tree->child->sibling->sibling->sibling->child,line); // For Arith ka child	
 		}
 		typeElement idtel = fetchTypeElement(table, tree->child->tok.lexeme);
-        
-        if(idtel.isError==false && (tree->child->tok.next->token_name, "open_sq")==0){
+        if(!tree->child->sibling->sym->is_terminal && strcmp(tree->child->sibling->child->sym->nt, "open_sq")==0){
         //bound checking 
-        tokenStream* ptr = tree->child->tok.next->next;
-        rangePair* bound = idtel.tex.ra.rangeListHead;
-        int localdim = 1;
-        while(strcmp(ptr->lexeme,"]")){
-            int num = atoi(ptr->lexeme);
-            int low = atoi(bound->lower);
-            int up = atoi(bound->upper);
-            if(num > up) printRangeError(1, ptr->line_num,tree->depth,num,up,localdim, idtel.varname);
-            if(num < low) printRangeError(0,ptr->line_num,tree->depth,num,low,localdim, idtel.varname);
-            ptr = ptr->next;
-            bound = bound->next;
-            localdim++;
-        }
+			tokenStream* ptr = tree->child->sibling->child->tok.next;
+			if(idtel.dtype==1){
+				rangePair* bound = idtel.tex.ra.rangeListHead;
+				int localdim = 1;
+				while(strcmp(ptr->lexeme,"]")){
+					int num = atoi(ptr->lexeme);
+					int low = atoi(bound->lower);
+					int up = atoi(bound->upper);
+					if(num > up) printRangeError(1, ptr->line_num,tree->depth,num,up,localdim, idtel.varname);
+					if(num < low) printRangeError(0,ptr->line_num,tree->depth,num,low,localdim, idtel.varname);
+					ptr = ptr->next;
+					bound = bound->next;
+					localdim++;
+				}
+			}
+			else if(idtel.dtype==2){
+
+			}
         }
         //bound checking for LHS id
 		//printf("%s %s\n", exptel.varname, idtel.varname);
@@ -1036,22 +1054,17 @@ typeElement* traverseParseTree(typeElement* table, parseTree* tree){
 // }
 
 int main(int argc, char* argv){
-    int option;
-    while(1){
     numvars = 0, ind = 0, tentativeTableSize = 0;
-    scanf("%d",&option);
-    if(option == 0) break;
     llnode* G;
     G = readGrammar("newgrammar.txt", G);
     tokenStream* head;
-    head = tokeniseSourcecode("t6.txt", head);
+    head = tokeniseSourcecode("t4.txt", head);
     parseTree* tree;
     tree = createParseTree(tree,head,G);
     typeElement* table; 
     table = traverseParseTree(table, tree);
-    printParseTree(tree);
+    //printParseTree(tree);
     printTypeExpressionTable(table);
-    }
     return 0;
 }
     
