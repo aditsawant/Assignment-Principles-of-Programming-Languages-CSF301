@@ -616,6 +616,17 @@ void printSizeMismatchError(typeExp* tex, int sz, int line, int depth){
     printf("%d-D Jagged Array Size Mismatch Error, size is %d\n", tex->ja.dimensions, sz);
 }
 
+void printRangeError(int decide, int line, int depth, int num, int range, int dim, char* varname){
+        printf("\nLine Number %d\n", line);
+        printf("Statement type : Assignment\n");
+        printf("Operator ***\n"); 
+        printf("First operand lexeme *** and type ***\n");
+        printf("Second operand lexeme *** and type ***\n");
+		printf("Depth of node in parse tree %d\n", depth);
+        if(decide == 1) printf("Type Error for %s in %d dimension as %d is greater than upper range %d\n",varname,dim,num,range);
+        else if(decide == 0) printf("Type Error for %s in %d dimension as %d is lesser than lower range %d\n",varname,dim,num,range);
+}
+
 void validateJA(typeExp* tex, int line, int depth){
     line++;
     row* ptr = tex->ja.rowListHead;
@@ -829,7 +840,23 @@ typeElement recursiveTraverse(typeElement* table, parseTree* tree, int line){
 	else if(tree->child == NULL && tree->sibling != NULL){
         if(strcmp(tree->sibling->sym->nt, "open_sq")==0){
             //bound checking 
-            return fetchTypeElement(table,tree->tok.lexeme);
+            typeElement tempo = fetchTypeElement(table,tree->tok.lexeme);
+            tokenStream* ptr = tree->tok.next->next;
+            if(tempo.dtype == 1){
+                rangePair* bound = tempo.tex.ra.rangeListHead;
+                int localdim = 1;
+                while(strcmp(ptr->lexeme,"]")){
+                    int num = atoi(ptr->lexeme);
+                    int low = atoi(bound->lower);
+                    int up = atoi(bound->upper);
+                    if(num > up) printRangeError(1, ptr->line_num,tree->depth,num,up,localdim, tempo.varname);
+                    if(num < low) printRangeError(0,ptr->line_num,tree->depth,num,low,localdim, tempo.varname);
+                    ptr = ptr->next;
+                    bound = bound->next;
+                    localdim++;
+                }
+            }
+            return tempo;
         }
 		else return recursiveTraverse(table, tree->sibling, line); // Correct
 	} 
@@ -840,7 +867,7 @@ typeElement recursiveTraverse(typeElement* table, parseTree* tree, int line){
 		typeElement tel = recursiveTraverse(table, tree->sibling, line);
 		typeElement ptr = recursiveTraverse(table, tree->child, line);
 		if(strcmp(tree->sibling->sym->nt,"div")==0){
-                printf("div found\n");
+                //printf("div found\n");
                 strcpy(tel.tex.prim_type,"real");
             }
         else if(tel.isError || ptr.isError || memcmp(&tel.tex, &ptr.tex, sizeof(tel.tex)) != 0){
@@ -870,6 +897,22 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 			exptel = recursiveTraverse(table, tree->child->sibling->sibling->sibling->child,line); // For Arith ka child	
 		}
 		typeElement idtel = fetchTypeElement(table, tree->child->tok.lexeme);
+        if(strcmp(tree->child->tok.next->token_name, "open_sq")==0){
+        //bound checking 
+        tokenStream* ptr = tree->child->tok.next->next;
+        rangePair* bound = idtel.tex.ra.rangeListHead;
+        int localdim = 1;
+        while(strcmp(ptr->lexeme,"]")){
+            int num = atoi(ptr->lexeme);
+            int low = atoi(bound->lower);
+            int up = atoi(bound->upper);
+            if(num > up) printRangeError(1, ptr->line_num,tree->depth,num,up,localdim, idtel.varname);
+            if(num < low) printRangeError(0,ptr->line_num,tree->depth,num,low,localdim, idtel.varname);
+            ptr = ptr->next;
+            bound = bound->next;
+            localdim++;
+        }
+        }
         //bound checking for LHS id
 		//printf("%s %s\n", exptel.varname, idtel.varname);
 
@@ -957,7 +1000,7 @@ int main(){
 	}
 	*/
 	tokenStream* head;
-	head = tokeniseSourcecode("sourcecode2.txt", head);
+	head = tokeniseSourcecode("sourcecode3.txt", head);
 	//test tokenise function
     /*
 	while(head->next != NULL){
@@ -977,7 +1020,7 @@ int main(){
 	table = traverseParseTree(table, tree);
     printf("\n");
 
-    printParseTree(tree);
-	printTypeExpressionTable(table);
+    //printParseTree(tree);
+	//printTypeExpressionTable(table);
 	return 0;
 }
