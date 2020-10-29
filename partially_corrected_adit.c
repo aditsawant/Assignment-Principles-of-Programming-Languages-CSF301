@@ -848,17 +848,23 @@ typeElement populateTypeElement(parseTree* tree, char* varname){
 			//trvaerse the ranges and check for any identifiers. 
 			rangePair* listHead = temp.tex.ra.rangeListHead;
 			while(listHead != NULL) {
+				printf("Inside the temp.nature while loop\n");
 				char* l = listHead->lower;
 				char* u = listHead->upper;
+				// printf("%s %s\n", u);
+				printf("Before the isalpha if else\n");
 				if(isalpha(l[0]) == 0 || isalpha(u[0]) == 0){
 					temp.nature = 1;
                     break;
 				} 
 				else temp.nature = 0;
+				printf("After the isalpha if else\n");
 				listHead = listHead->next;
 			}
+			printf("Exited the temp.nature while loop\n");
 		} else temp.nature = 2;
 		temp.tex = *tree->tex;
+		printf("About to return temp\n");
 		return temp;
 }
 
@@ -915,10 +921,11 @@ typeElement recursiveTraverse(typeElement* table, parseTree* tree, int line){
 }
 
 void traverseParseTreeB(typeElement* table, parseTree* tree){
+	// printf("Inside tPtB\n");
 	// For Assignment Statements
 	if(tree == NULL) return;
 	if(strcmp(tree->sym->nt,"ASSIGNMENT_STATEMENT") == 0){
-		//printf("In the Assign section\n");
+		printf("In the Assign section\n");
 		// printTypeExpTable(table);
         int line = tree->child->tok.line_num;
 		typeElement exptel;
@@ -932,6 +939,7 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
         
         if(idtel.isError==false && (tree->child->tok.next->token_name, "open_sq")==0){
         //bound checking 
+		printf("Entering Bound Checking section\n");
         tokenStream* ptr = tree->child->tok.next->next;
         rangePair* bound = idtel.tex.ra.rangeListHead;
         int localdim = 1;
@@ -945,6 +953,7 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
             bound = bound->next;
             localdim++;
         }
+		printf("Exited while loop of the Bound Checking section\n");
         }
         //bound checking for LHS id
 		//printf("%s %s\n", exptel.varname, idtel.varname);
@@ -958,21 +967,24 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 	else{
 		// For Declaration statements:
 		if(strcmp(tree->sym->nt, "declare") == 0){
-			//printf("In the Declare section\n");
+			printf("In the Declare section\n");
 			parseTree* declareptr = tree;
 			if(strcmp(tree->sibling->sym->nt, "id") == 0){
-				//printf("In the single var section\n");
+				printf("In the single var section\n");
 				table[ind] = populateTypeElement(tree, tree->sibling->tok.lexeme);
 				numvars++;
 				//printf("NUMVARS: %d\n\n", numvars);
 				//table = (typeElement*) realloc(table, sizeof(table) + sizeof(typeElement));
 				ind++;
 			} else{
-				//printf("In the List of vars section\n");
+				printf("In the List of vars section\n");
 				parseTree* idlistptr = tree->sibling->sibling->sibling->sibling; // now pointing to idlist
 				while(idlistptr->child->sibling != NULL){
 					//printf("In the while loop\n");
+					printf("Before temptel decln\n");
+					printf("%s\n", idlistptr->child->tok.lexeme);
 					typeElement temptel = populateTypeElement(tree, idlistptr->child->tok.lexeme);
+					printf("After temptel decln\n");
 					// printf("%d\n", ind);
 					
 					table[ind] = temptel;
@@ -1014,7 +1026,7 @@ typeElement* traverseParseTree(typeElement* table, parseTree* tree){
     //printf("%d\n",tentativeTableSize);
 	temptree = tree;
     table = (typeElement*) malloc(sizeof(typeElement)*tentativeTableSize);
-	printf("Table malloc done\n");
+	if(table != NULL) printf("Table malloc done\n");
 	traverseParseTreeB(table, temptree);
 	printf("\nTraversal Completed Successfully\n\n");
     return table;
