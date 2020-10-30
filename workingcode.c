@@ -484,27 +484,39 @@ parseTree* createParseTree(parseTree* t, tokenStream *head, llnode* G)
 
 void printParseTree(parseTree* tree){
 	if(tree == NULL) return;
+	char star[3] = "***";
     //print for this node
     if(tree->sym->is_terminal){
-        printf("%s terminal %s %d %d\n", tree->sym->nt, tree->tok.lexeme, tree->tok.line_num, tree->depth);
+        printf("|%-22s|terminal   |%-15s|%-22s|%-5d|%-5d|%-112s\n", tree->sym->nt, star, tree->tok.lexeme, tree->tok.line_num, tree->depth, star);
     }
     else{
-        printf("%s nonterminal\n", tree->sym->nt);
+        printf("|%-22s|nonterminal|", tree->sym->nt);
         if(tree->tex != NULL){
-            printf("%s ", arr[tree->dtype]);
+            printf("%-15s|", arr[tree->dtype]);
         }
+		else printf("%-15s|",star);
         llnode * ptr = tree->ptr;
-        while(ptr != NULL){
+        printf("%-22s|%-5s|%-5d|",star,star,tree->depth);
+		while(ptr != NULL){
             printf("%s ", ptr->sym.nt);
             ptr = ptr->next;
         }
-        printf("%d\n",tree->depth);
+		printf("\n");
     }
     //recurse in preorder
 	if(!tree->sym->is_terminal){
 		printParseTree(tree->child);
 	}
 	printParseTree(tree->sibling);
+}
+
+void printPerfectParseTree(parseTree* tree){
+	//printf("Symbol Name\t\t\t\tT/NT\t\tTypeExpression\t\t\tLexeme\tLine Num\tDepth\tGrammar Rule\n");
+	printf("----------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+	printf("|%-22s|%-11s|%-15s|%-22s|%-5s|%-5s|%-112s\n","Symbol Name","T/NT","TypeExpression","Lexeme","Line","Depth","Grammar Rule");
+	printf("----------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+	printParseTree(tree);
+	printf("----------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 }
 
 void calculateDepth(parseTree* tree, int depth){
@@ -518,9 +530,11 @@ void calculateDepth(parseTree* tree, int depth){
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void printTypeExpressionTable(typeElement* table){
-    printf("FIELD1 \t\t FIELD2 \t\t FIELD3 \t\t FIELD4 \n");
+	printf("----------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+    printf("FIELD1\t\tFIELD2\t\t\t\tFIELD3\t\tFIELD4\n");
+	printf("----------------------------------------------------------------------------------------------------------------------------------------------------------\n");
 	for(int i = 0; i < numvars; i++){
-		printf("%s \t%s \t%s \t",table[i].varname, arr[table[i].dtype], brr[table[i].nature]);
+		printf("%s\t\t%s\t\t%s\t\t",table[i].varname, arr[table[i].dtype], brr[table[i].nature]);
         if(table[i].dtype==0){
             printf("<type=%s>\n", table[i].tex.prim_type);
         }
@@ -567,7 +581,8 @@ void printTypeExpressionTable(typeElement* table){
             printf("basicElementType=integer>\n");
         }
 	}
-    printf("Table printed successfully!\n");
+	printf("----------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+    printf("\nTable printed successfully!\n");
 }
 
 void printTypeError(typeElement t1, typeElement t2, parseTree* tree, int line, char* lex){ //incomplete
@@ -592,33 +607,33 @@ void printTypeError(typeElement t1, typeElement t2, parseTree* tree, int line, c
         strcpy(type2,"jagged_array");
     }
     if(strcmp(type1,type2)!=0){
-        printf("\nLine Number %d\n", line);
-        printf("Statement type : Assignment\n");
-        printf("Operator %s\n", lex); 
-        printf("First operand lexeme %s and type %s\n", t2.varname, type2);
-        printf("Second operand lexeme %s and type %s\n", t1.varname, type1);
-		printf("Depth of node in parse tree %d\n", tree->depth);
+        printf("Line Number %d\t", line);
+        printf("Statement type : Assignment\t");
+        printf("Operator %s\t", lex); 
+        printf("First operand lexeme %s and type %s\t", t2.varname, type2);
+        printf("Second operand lexeme %s and type %s    ", t1.varname, type1);
+		printf("Depth of node in parse tree %d    ", tree->depth);
         printf("Type Error\n");
     }
 	else if(t1.dtype == 1 && t2.dtype == 1){
 		if(t1.tex.ra.dimensions != t2.tex.ra.dimensions){
-		printf("\nLine Number %d\n", line);
-        printf("Statement type : Assignment\n");
-        printf("Operator %s\n", lex); 
-        printf("First operand lexeme %s and %d-D type %s\n", t2.varname, t2.tex.ra.dimensions, type2);
-        printf("Second operand lexeme %s and %d-D type %s\n", t1.varname, t1.tex.ra.dimensions, type1);
-		printf("Depth of node in parse tree %d\n", tree->depth);
+		printf("Line Number %d\t", line);
+        printf("Statement type : Assignment\t");
+        printf("Operator %s\t", lex); 
+        printf("First operand lexeme %s and %d-D type %s\t", t2.varname, t2.tex.ra.dimensions, type2);
+        printf("Second operand lexeme %s and %d-D type %s    ", t1.varname, t1.tex.ra.dimensions, type1);
+		printf("Depth of node in parse tree %d    ", tree->depth);
         printf("Type Error, different dimensions of rect array\n");
 		}	
 	}
 	else if(t1.dtype == 2 && t2.dtype == 2){
 		if(t1.tex.ja.dimensions != t2.tex.ja.dimensions){
-		printf("\nLine Number %d\n", line);
-        printf("Statement type : Assignment\n");
-        printf("Operator %s\n", lex); 
-        printf("First operand lexeme %s and %d-D type %s\n", t2.varname, t2.tex.ja.dimensions, type2);
-        printf("Second operand lexeme %s and %d-D type %s\n", t1.varname, t1.tex.ja.dimensions, type1);
-		printf("Depth of node in parse tree %d\n", tree->depth);
+		printf("Line Number %d\t", line);
+        printf("Statement type : Assignment\t");
+        printf("Operator %s\t", lex); 
+        printf("First operand lexeme %s and %d-D type %s\t", t2.varname, t2.tex.ja.dimensions, type2);
+        printf("Second operand lexeme %s and %d-D type %s    ", t1.varname, t1.tex.ja.dimensions, type1);
+		printf("Depth of node in parse tree %d    ", tree->depth);
         printf("Type Error, different dimensions of jagged array\n");
 		}
 	}
@@ -627,32 +642,32 @@ void printTypeError(typeElement t1, typeElement t2, parseTree* tree, int line, c
 
 void printTypeDefError(typeExp* tex, int line, int depth){
 
-    printf("\nLine Number %d\n", line);
-    printf("Statement type : Declaration\n");
-    printf("Operator ***\n");
-    printf("First operand lexeme *** and type ***\n");
-    printf("Second operand lexeme *** and type ***\n");
-    printf("Depth of node in parse tree %d\n", depth);
+    printf("Line Number %d\t", line);
+    printf("Statement type : Declaration\t");
+    printf("Operator ***\t");
+    printf("First operand lexeme *** and type ***\t");
+    printf("Second operand lexeme *** and type ***    ");
+    printf("Depth of node in parse tree %d    ", depth);
     printf("%d-D Jagged Array Type Definition Error\n", tex->ja.dimensions);
 }
 
 void printSizeMismatchError(typeExp* tex, int sz, int line, int depth){
-    printf("\nLine Number %d\n", line);
-    printf("Statement type : Declaration\n");
-    printf("Operator ***\n");
-    printf("First operand lexeme *** and type ***\n");
-    printf("Second operand lexeme *** and type ***\n");
-    printf("Depth of node in parse tree %d\n", depth);
+    printf("Line Number %d\t", line);
+    printf("Statement type : Declaration\t");
+    printf("Operator ***\t");
+    printf("First operand lexeme *** and type ***\t");
+    printf("Second operand lexeme *** and type ***    ");
+    printf("Depth of node in parse tree %d    ", depth);
     printf("%d-D Jagged Array Size Mismatch Error, size is %d\n", tex->ja.dimensions, sz);
 }
 
 void printRangeError(int decide, int line, int depth, int num, int range, int dim, char* varname){
-        printf("\nLine Number %d\n", line);
-        printf("Statement type : Assignment\n");
-        printf("Operator ***\n"); 
-        printf("First operand lexeme *** and type ***\n");
-        printf("Second operand lexeme *** and type ***\n");
-		printf("Depth of node in parse tree %d\n", depth);
+        printf("Line Number %d\t", line);
+        printf("Statement type : Assignment\t");
+        printf("Operator ***\t"); 
+        printf("First operand lexeme *** and type ***\t");
+        printf("Second operand lexeme *** and type ***    ");
+		printf("Depth of node in parse tree %d    ", depth);
         if(decide == 1) printf("Type Error for %s in %d dimension as %d is greater than upper range %d\n",varname,dim,num,range);
         else if(decide == 0) printf("Type Error for %s in %d dimension as %d is lesser than lower range %d\n",varname,dim,num,range);
 }
@@ -1092,11 +1107,13 @@ typeElement* traverseParseTree(typeElement* table, parseTree* tree){
 		traverseParseTreeA(tree);
 		//printf("%d\n",tentativeTableSize);
 		table = (typeElement*) malloc(sizeof(typeElement)*100);
+		printf("Errors found:\n\n");
 		traverseParseTreeB(table, tree);
 		printf("\nTraversal Completed Successfully\n");
 		checkpoint = true;
 	} else {
 		table = (typeElement*) malloc(sizeof(typeElement)*100);
+		printf("Errors found:\n\n");
 		traverseParseTreeB(table, tree);
 		printf("\nTraversal Completed Successfully\n");
 	}
@@ -1204,7 +1221,7 @@ int main()
 				table = NULL;
 			} else printf("\nTraversal Completed Successfully\n");
 			*/
-            printParseTree(tree);
+            printPerfectParseTree(tree);
         }
         else if(option == 4){
             if(!isCreated) {
@@ -1351,3 +1368,8 @@ int main(int argc, char* argv){
     return 0;
 }
 */
+
+
+
+
+    
