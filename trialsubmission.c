@@ -1075,6 +1075,8 @@ typeElement* traverseParseTree(typeElement* table, parseTree* tree){
 	traverseParseTreeA(otree);
     //printf("%d\n",tentativeTableSize);
     table = (typeElement*) malloc(sizeof(typeElement)*getTableSize(tree,0));
+	printf("\n\n-------------------------------------------------------------\n");
+	printf("\nERRORS: \n\n");
 	traverseParseTreeB(table, tree);
 	printf("\n\nTraversal Completed Successfully\n\n");
     return table;
