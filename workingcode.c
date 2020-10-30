@@ -12,7 +12,7 @@ MAITHIL MEHTA 2018A7PS0345P
 #include <ctype.h>
 #include <limits.h>
 #define num_rules 70
-int numvars = 0, ind = 0, tentativeTableSize = 0;
+int numvars = 0, ind = 0;
 bool checkpoint = false;
 char* arr[3] = {"primitive","rectangularArray","jaggedArray"};
 char* brr[3] = {"static","dynamic","not_applicable"};
@@ -360,8 +360,8 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 	t->child = NULL;
     //t->tok = NULL;
 
-	Stack* stack = createStack(100);
-	Stack* aux = createStack(100);
+	Stack* stack = createStack(20);
+	Stack* aux = createStack(20);
 
 	ret_st.verdict = fill_aux(aux,*lhs_sym, G, counter, t);
 	if(ret_st.verdict == true) return ret_st;
@@ -459,19 +459,7 @@ special createSubTree(symbol* lhs_sym, tokenStream *head, llnode* G, int counter
 }
 
 parseTree* createParseTree(parseTree* t, tokenStream *head, llnode* G)
-{	/*
-	special st;
-	if(checkpoint == false){
-		st = createSubTree(&(G[0].sym) , head, G, 0);
-		t = st.pt;
-		checkpoint = true;
-	}
-	if(t != NULL){
-		printf("Parse Tree Created Successfully\n");
-	} 
-	else printf("Parse Tree Creation Failed\n");
-	return t;
-	*/
+{	
 	special st;
 	st = createSubTree(&(G[0].sym) , head, G, 0);
 	t = st.pt;
@@ -821,7 +809,6 @@ void traverseParseTreeA(parseTree* tree){
         if(strcmp(ptr->tok.lexeme,"list") == 0) ptr = ptr->sibling->sibling->sibling;
         while(strcmp(ptr->tok.lexeme,":")!=0){
             ptr = ptr->sibling;
-            tentativeTableSize++;
             //printf("%d\n",tentativeTableSize);
         }
         //to populate tex
@@ -1088,35 +1075,22 @@ void traverseParseTreeB(typeElement* table, parseTree* tree){
 	}
 	traverseParseTreeB(table, tree->sibling);
 }
-/*
+
+int getTableSize(parseTree* tree,int counter){
+	if(tree == NULL || strcmp(tree->sym->nt,"ASSIGNMENT_STATEMENTS") == 0) return counter;
+	if(strcmp(tree->tok.token_name,"id")==0) counter++;
+	return counter + getTableSize(tree->sibling,counter) + getTableSize(tree->child,counter);
+}
+
 typeElement* traverseParseTree(typeElement* table, parseTree* tree){
 	parseTree* otree = tree;
 	calculateDepth(tree,0);
 	//if(tree == otree) printf("Adit is right\n");
 	traverseParseTreeA(otree);
     //printf("%d\n",tentativeTableSize);
-    table = (typeElement*) malloc(sizeof(typeElement)*tentativeTableSize);
+    table = (typeElement*) malloc(sizeof(typeElement)*getTableSize(tree,0));
 	traverseParseTreeB(table, tree);
 	printf("\nTraversal Completed Successfully\n");
-    return table;
-}
-*/
-typeElement* traverseParseTree(typeElement* table, parseTree* tree){
-	if(!checkpoint){
-		calculateDepth(tree,0);
-		traverseParseTreeA(tree);
-		//printf("%d\n",tentativeTableSize);
-		table = (typeElement*) malloc(sizeof(typeElement)*100);
-		printf("Errors found:\n\n");
-		traverseParseTreeB(table, tree);
-		printf("\nTraversal Completed Successfully\n");
-		checkpoint = true;
-	} else {
-		table = (typeElement*) malloc(sizeof(typeElement)*100);
-		printf("Errors found:\n\n");
-		traverseParseTreeB(table, tree);
-		printf("\nTraversal Completed Successfully\n");
-	}
     return table;
 }
 
@@ -1129,57 +1103,18 @@ void printMenu()
 	printf("Press 3 to Print Parse Tree\n");
 	printf("Press 4 to Print Type Expression Table\n");
 }
-/*
-int main(int argc, char* argv[]){
-	int option;
-    llnode* G;
-    G = readGrammar("newgrammar.txt", G);
-    tokenStream* head;
-    head = tokeniseSourcecode("t3.txt", head);
-    parseTree* tree;
-    typeElement* table; 
-	while(1){
-		printMenu();
-		scanf("%d",&option);
-		numvars = 0, ind = 0, tentativeTableSize = 0;
-		if(option==0){
-			printf("Exiting...\n");
-			break;
-		}
-		else if(option==1){
-			tree = createParseTree(tree,head,G);
-		}
-		else if(option==2){
-			tree = createParseTree(tree,head,G);
-			table = traverseParseTree(table, tree);
-		}
-		else if(option==3){
-			tree = createParseTree(tree,head,G);
-			table = traverseParseTree(table, tree);			
-			printParseTree(tree);
-		}
-		else if(option==4){
-			tree = createParseTree(tree,head,G);
-			table = traverseParseTree(table, tree);
-   			printTypeExpressionTable(table);
-		}
-		else{
-			printf("Invalid option, try again!\n");
-		}
-	}
-	return 0;
-}
-*/
-int main()
-{
+
+int main(int argc, char* argv[])
+{		
+		printf("Welcome - hope you are having a good day!\n");
 		llnode* G = readGrammar("newgrammar.txt", G);
-        tokenStream* head = tokeniseSourcecode("t6.txt", head);
+        tokenStream* head = tokeniseSourcecode(argv[1], head);
         parseTree* tree;
 		typeElement* table; 
 		bool isCreated = false, isTraversed = false;
 		int option;
 		while(1){
-        numvars = 0, ind = 0, tentativeTableSize = 0;
+        numvars = 0, ind = 0;
         printMenu();
         scanf("%d",&option);
         if(option == 0 ){
@@ -1187,56 +1122,20 @@ int main()
             return 0;
         }
         else if(option == 1){
-            if(!isCreated) {
 				tree = createParseTree(tree,head,G);
-            	isCreated = true;
-			} else printf("Parse Tree Created Successfully\n");
         }
         else if(option == 2){
-            if(!isCreated) {
-				tree = createParseTree(tree,head,G);
-            	isCreated = true;
-			} else printf("Parse Tree Created Successfully\n");
-            
+			tree = createParseTree(tree,head,G);
             table = traverseParseTree(table,tree);
-			/*
-            if(!isTraversed) {
-				table = traverseParseTree(table,tree);
-				isTraversed = true;
-				table = NULL;
-			} else printf("\nTraversal Completed Successfully\n");
-			*/
          }
         else if(option == 3){
-            if(!isCreated) {
-				tree = createParseTree(tree,head,G);
-            	isCreated = true;
-			} else printf("Parse Tree Created Successfully\n");
-             
+			tree = createParseTree(tree,head,G); 
 			table = traverseParseTree(table,tree);
-			/*
-            if(!isTraversed) {
-				table = traverseParseTree(table,tree);
-				isTraversed = true;
-				table = NULL;
-			} else printf("\nTraversal Completed Successfully\n");
-			*/
             printPerfectParseTree(tree);
         }
         else if(option == 4){
-            if(!isCreated) {
-				tree = createParseTree(tree,head,G);
-            	isCreated = true;
-			} else printf("Parse Tree Created Successfully\n");
-            
+			tree = createParseTree(tree,head,G);
 			table = traverseParseTree(table,tree);
-			/*
-            if(!isTraversed) {
-				table = traverseParseTree(table,tree);
-				isTraversed = true;
-				table = NULL;
-			} else printf("\nTraversal Completed Successfully\n");
-			*/
             printTypeExpressionTable(table);
         }
         else
@@ -1246,130 +1145,3 @@ int main()
     }
     return 0;
 }
-
-// int main(){
-// 	// bool val; // default false;
-// 	// printf("%s", val ? "true" : "false");
-	
-// 	llnode* G;
-// 	G = readGrammar("newgrammar.txt", G);
-// 	//test read grammar function
-//     /*
-// 	for(int i=0; i<67; i++){
-// 		llnode* temp = G+i;
-// 		printf("\n");
-// 		while(temp != NULL){
-// 			if(temp->sym.is_terminal) printf("%s ", temp->sym.t);
-// 			else printf("%s ", temp->sym.nt);
-// 			temp = temp->next;
-// 		}		
-// 	}
-// 	*/
-// 	tokenStream* head;
-// 	head = tokeniseSourcecode("sourcecode.txt", head);
-// 	//test tokenise function
-//     /*
-// 	while(head->next != NULL){
-// 		printf("%s\n", head->token_name);
-// 		head = head->next;
-// 	}
-// 	while(head != NULL){
-// 		printf("%s\n", head->token_name);
-// 		head = head->before;
-// 	}
-// 	*/
-// 	parseTree* tree;
-// 	tree = createParseTree(tree,head,G);
-// 	//printf("\n\n");
-	
-// 	typeElement* table; 
-// 	table = traverseParseTree(table, tree);
-//     printf("\n");
-
-//     //printParseTree(tree);
-// 	//printTypeExpressionTable(table);
-// 	return 0;
-// }
-/*
-void solve1(){
-	numvars = 0, ind = 0, tentativeTableSize = 0;
-    llnode* G;
-    G = readGrammar("newgrammar.txt", G);
-    tokenStream* head;
-    head = tokeniseSourcecode("sourcecode3.txt", head);
-	for(int i=0; i<70; i++){
-		llnode* temp = G+i;
-		printf("\n");
-		while(temp != NULL){
-			if(temp->sym.is_terminal) printf("%s ", temp->sym.nt);
-			else printf("%s ", temp->sym.nt);
-			temp = temp->next;
-		}		
-	}
-	printf("\n");
-	printf("\n");
-    parseTree* tree;
-    tree = createParseTree(tree,head,G);
-}
-
-void solve2(){
-    numvars = 0, ind = 0, tentativeTableSize = 0;
-    llnode* G;
-    G = readGrammar("newgrammar.txt", G);
-    tokenStream* head;
-    head = tokeniseSourcecode("sourcecode3.txt", head);
-    parseTree* tree;
-    tree = createParseTree(tree,head,G);
-    typeElement* table; 
-    table = traverseParseTree(table, tree);
-}
-
-void solve3(){
-    numvars = 0, ind = 0, tentativeTableSize = 0;
-    llnode* G;
-    G = readGrammar("newgrammar.txt", G);
-    tokenStream* head;
-    head = tokeniseSourcecode("sourcecode3.txt", head);
-    parseTree* tree;
-    tree = createParseTree(tree,head,G);
-    typeElement* table; 
-    table = traverseParseTree(table, tree);
-    printParseTree(tree);
-}
-
-void solve4(){
-    numvars = 0, ind = 0, tentativeTableSize = 0;
-    llnode* G;
-    G = readGrammar("newgrammar.txt", G);
-    tokenStream* head;
-    head = tokeniseSourcecode("sourcecode3.txt", head);
-    parseTree* tree;
-    tree = createParseTree(tree,head,G);
-    typeElement* table; 
-    table = traverseParseTree(table, tree);
-    printParseTree(tree);
-    printTypeExpressionTable(table);
-}
-
-int main(int argc, char* argv){
-	int option;
-	while(1){
-		scanf("%d",&option);
-		switch(option){
-			case 0 : break;
-			case 1 : solve1(); break;
-			case 2 : solve2(); break;
-			case 3 : solve3(); break;
-			case 4 : solve4(); break;
-			default : printf("Enter valid number pls\n");
-		}
-		if(option == 0) break;
-	}
-    return 0;
-}
-*/
-
-
-
-
-    
