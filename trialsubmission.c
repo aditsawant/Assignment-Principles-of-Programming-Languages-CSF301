@@ -1101,7 +1101,6 @@ int main(int argc, char* argv[])
 	tokenStream* head = tokeniseSourcecode(argv[1], head);
 	parseTree* tree;
 	typeElement* table; 
-	bool isCreated = false, isTraversed = false;
 	int option;
 	while(1){
 		numvars = 0, ind = 0;
