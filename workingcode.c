@@ -13,7 +13,6 @@ MAITHIL MEHTA 2018A7PS0345P
 #include <limits.h>
 #define num_rules 70
 int numvars = 0, ind = 0;
-bool checkpoint = false;
 char* arr[3] = {"primitive","rectangularArray","jaggedArray"};
 char* brr[3] = {"static","dynamic","not_applicable"};
 typedef enum {Primitive, Rect_Array, Jagged_Array} dtype;
@@ -574,6 +573,13 @@ void printTypeExpressionTable(typeElement* table){
 }
 
 void printTypeError(typeElement t1, typeElement t2, parseTree* tree, int line, char* lex){ //incomplete
+	/*
+	if((strcmp(t1.tex.prim_type,"integer") == 0 && ((t2.dtype == 2 || t2.dtype == 3)&& t2.tex.))
+	||(strcmp(t2.tex.prim_type,"integer") == 0 && (t1.dtype == 2 || t1.dtype == 3))
+	|| t2.dtype==2&&t1.dtype==3 || t1.dtype==3&&t2.dtype==2)
+	{
+		return;
+	} */
 	char type1[20], type2[20];
 	 if(t1.dtype==0){
         strcpy(type1,t1.tex.prim_type);
