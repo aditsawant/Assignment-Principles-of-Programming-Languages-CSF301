@@ -1,5 +1,6 @@
-# PPL_Ass
-It's in the name
+# Assignment - Principles of Programming Languages(CSF301)
+
+Worked on language design and testing. This language followed grammar rules that were developed by me along with my team.
 
 Problem Statement: [Assignment1](https://github.com/aditsawant/PPL_Assignment_1/blob/master/assignment%201.pdf)
 
